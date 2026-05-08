@@ -1,0 +1,1698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sarik Eng · Financial Services Job Board</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Barlow:ital,wght@0,300;0,400;0,500;0,600;1,300&family=Barlow+Condensed:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:              #06101C;
+      --bg-mid:          #091828;
+      --bg-card:         #0C1D32;
+      --bg-card-h:       #112540;
+      --bg-panel:        #081420;
+      --border:          #1A3050;
+      --border-glow:     rgba(200, 169, 81, 0.25);
+
+      --gold:            #C8A951;
+      --gold-lt:         #D9BC76;
+      --gold-dk:         #7A6330;
+      --gold-dim:        rgba(200, 169, 81, 0.08);
+
+      --cream:           #EDE5D0;
+      --cream-dim:       #8A8070;
+      --cream-faint:     rgba(237, 229, 208, 0.06);
+
+      --blue:            #2D6FA8;
+      --blue-lt:         #6AAEE0;
+      --blue-bg:         rgba(45, 111, 168, 0.12);
+      --amber:           #C47A28;
+      --amber-lt:        #D9A060;
+      --amber-bg:        rgba(196, 122, 40, 0.12);
+      --green:           #1F906A;
+      --green-lt:        #5CBF98;
+      --green-bg:        rgba(31, 144, 106, 0.12);
+      --red:             #C44040;
+      --red-lt:          #E07070;
+      --red-bg:          rgba(160, 40, 40, 0.12);
+      --red-border:      rgba(180, 50, 50, 0.25);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--cream);
+      font-family: 'Barlow', sans-serif;
+      font-weight: 400;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* Ambient glow */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 15% 8%,  rgba(200,169,81,0.05)  0%, transparent 60%),
+        radial-gradient(ellipse 50% 50% at 85% 85%, rgba(45,111,168,0.04) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────────── */
+    header {
+      position: relative;
+      z-index: 10;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 2.8rem 2.5rem 0;
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding-bottom: 1.6rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-eyebrow {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 0.45rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .header-eyebrow::before {
+      content: '';
+      display: inline-block;
+      width: 20px;
+      height: 1px;
+      background: var(--gold-dk);
+    }
+
+    .header-name {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(2rem, 3.5vw, 3rem);
+      font-weight: 600;
+      color: var(--cream);
+      letter-spacing: -0.01em;
+      line-height: 1.1;
+    }
+
+    .header-name span {
+      color: var(--gold);
+      font-style: italic;
+      font-weight: 400;
+    }
+
+    .header-tagline {
+      margin-top: 0.4rem;
+      font-size: 0.82rem;
+      font-weight: 300;
+      color: var(--cream-dim);
+      letter-spacing: 0.02em;
+    }
+
+    .header-right {
+      text-align: right;
+    }
+
+    .header-date {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--cream-dim);
+      margin-bottom: 0.7rem;
+    }
+
+    .cred-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.35rem;
+    }
+
+    .cred-pill {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.62rem;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      padding: 0.18rem 0.65rem;
+      border-radius: 2px;
+      border: 1px solid var(--gold-dk);
+      color: var(--gold-lt);
+      background: var(--gold-dim);
+      white-space: nowrap;
+    }
+
+    .cred-pill.dim {
+      border-color: var(--border);
+      color: var(--cream-dim);
+      background: transparent;
+    }
+
+    /* ── Stats Banner ───────────────────────────────────────────────────── */
+    .stats-banner {
+      position: relative;
+      z-index: 10;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 1.6rem 2.5rem;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.3rem 1.6rem 1.1rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--gold-dk), var(--gold), var(--gold-dk), transparent);
+      opacity: 0.7;
+    }
+
+    .stat-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.62rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--cream-dim);
+      margin-bottom: 0.55rem;
+    }
+
+    .stat-value {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 2.6rem;
+      font-weight: 700;
+      color: var(--cream);
+      line-height: 1;
+    }
+
+    .stat-value.accent { color: var(--gold); }
+    .stat-value.green  { color: var(--green-lt); }
+
+    .stat-note {
+      font-size: 0.7rem;
+      font-weight: 300;
+      color: var(--cream-dim);
+      margin-top: 0.35rem;
+    }
+
+    /* ── Controls ───────────────────────────────────────────────────────── */
+    .controls {
+      position: relative;
+      z-index: 10;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0 2.5rem 1.6rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.9rem;
+      align-items: center;
+    }
+
+    .search-wrap {
+      position: relative;
+      flex: 1;
+      min-width: 220px;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 0.95rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--cream-dim);
+      pointer-events: none;
+    }
+
+    .search-input {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.68rem 0.9rem 0.68rem 2.5rem;
+      color: var(--cream);
+      font-family: 'Barlow', sans-serif;
+      font-size: 0.83rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-input::placeholder { color: var(--cream-dim); }
+    .search-input:focus { border-color: var(--gold-dk); }
+
+    .filter-group {
+      display: flex;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      padding: 0.5rem 0.95rem;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--cream-dim);
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .filter-btn:hover { border-color: var(--gold-dk); color: var(--cream); }
+    .filter-btn.active {
+      background: var(--gold-dim);
+      border-color: var(--gold-dk);
+      color: var(--gold-lt);
+    }
+
+    .toggle-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.45rem 0.9rem;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      background: var(--bg-card);
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .toggle-wrap:hover { border-color: var(--gold-dk); }
+
+    .toggle-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--cream-dim);
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .toggle {
+      position: relative;
+      width: 36px;
+      height: 18px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: var(--border);
+      border-radius: 18px;
+      transition: background 0.2s;
+    }
+
+    .toggle input:checked + .toggle-track { background: var(--gold-dk); }
+
+    .toggle-thumb {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--cream-dim);
+      top: 3px;
+      left: 3px;
+      transition: left 0.2s, background 0.2s;
+      pointer-events: none;
+    }
+
+    .toggle input:checked ~ .toggle-thumb {
+      left: 21px;
+      background: var(--gold-lt);
+    }
+
+    .sort-select {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.52rem 0.9rem;
+      color: var(--cream-dim);
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .sort-select:hover { border-color: var(--gold-dk); }
+    .sort-select option { background: #0C1D32; color: var(--cream); }
+
+    /* ── Section Divider ────────────────────────────────────────────────── */
+    .section-divider {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0 2.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .divider-line { flex: 1; height: 1px; background: var(--border); }
+
+    .divider-text {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.62rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--cream-dim);
+      white-space: nowrap;
+    }
+
+    /* ── Job Grid ───────────────────────────────────────────────────────── */
+    .job-grid {
+      position: relative;
+      z-index: 10;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0 2.5rem 5rem;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.2rem;
+      align-items: start;
+    }
+
+    /* ── Job Card ───────────────────────────────────────────────────────── */
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .job-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s;
+      animation: cardIn 0.45s ease both;
+    }
+
+    .job-card:hover {
+      border-color: rgba(200,169,81,0.3);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+      transform: translateY(-2px);
+    }
+
+    .job-card.is-dealbreaker {
+      background: rgba(100, 30, 30, 0.08);
+      border-color: var(--red-border);
+    }
+    .job-card.is-dealbreaker:hover {
+      border-color: rgba(180, 50, 50, 0.45);
+    }
+
+    /* Dealbreaker top banner */
+    .db-banner {
+      display: none;
+      background: rgba(140, 30, 30, 0.18);
+      border-bottom: 1px solid var(--red-border);
+      padding: 0.45rem 1.3rem;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.63rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--red-lt);
+      gap: 0.45rem;
+      align-items: center;
+    }
+
+    .job-card.is-dealbreaker .db-banner { display: flex; }
+
+    /* Card body */
+    .card-body {
+      padding: 1.35rem 1.35rem 1rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-top {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .co-logo {
+      width: 44px;
+      height: 44px;
+      flex-shrink: 0;
+      border-radius: 6px;
+      background: linear-gradient(135deg, var(--bg-mid), var(--bg-panel));
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--gold);
+    }
+
+    .card-title-block { flex: 1; min-width: 0; }
+
+    .co-name {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--cream-dim);
+      margin-bottom: 0.2rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .role-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--cream);
+      line-height: 1.3;
+    }
+
+    /* Meta chips */
+    .card-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem;
+      margin-bottom: 0.9rem;
+    }
+
+    .chip {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.65rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--cream-dim);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .chip svg { width: 10px; height: 10px; flex-shrink: 0; }
+
+    .sep { color: var(--border); font-size: 0.8em; }
+
+    .badge {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.15rem 0.55rem;
+      border-radius: 2px;
+      border: 1px solid;
+    }
+
+    .badge.hybrid  { color: #5BA8D9; border-color: rgba(91,168,217,0.25); background: rgba(91,168,217,0.08); }
+    .badge.onsite  { color: #A89870; border-color: rgba(168,152,112,0.25); background: rgba(168,152,112,0.08); }
+    .badge.remote  { color: #6BA88A; border-color: rgba(107,168,138,0.25); background: rgba(107,168,138,0.08); }
+
+    /* Salary / Source row */
+    .card-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .salary {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--cream);
+      letter-spacing: 0.01em;
+    }
+
+    .source-tag {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.62rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--cream-dim);
+      border: 1px solid var(--border);
+      padding: 0.15rem 0.55rem;
+      border-radius: 2px;
+      text-decoration: none;
+    }
+
+    a.source-link {
+      color: var(--gold-dk);
+      border-color: rgba(200,169,81,0.3);
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    a.source-link:hover {
+      color: var(--gold);
+      border-color: var(--gold);
+    }
+
+    /* Fit Score */
+    .fit-wrap { margin-bottom: 0.4rem; }
+
+    .fit-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.5rem;
+    }
+
+    .fit-label-text {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.62rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--cream-dim);
+    }
+
+    .fit-number {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .fit-number sub {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.55rem;
+      font-weight: 400;
+      color: var(--cream-dim);
+      vertical-align: baseline;
+    }
+
+    .score-s { color: var(--gold); }       /* 85+ */
+    .score-a { color: #5BA88A; }           /* 70–84 */
+    .score-b { color: #C4822A; }           /* 50–69 */
+    .score-c { color: var(--red-lt); }     /* <50 */
+
+    .fit-track {
+      height: 3px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .fit-fill {
+      height: 100%;
+      border-radius: 3px;
+      width: 0%;
+      transition: width 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .fit-fill.score-s { background: linear-gradient(90deg, var(--gold-dk), var(--gold)); }
+    .fit-fill.score-a { background: linear-gradient(90deg, #1F6B50, #5BA88A); }
+    .fit-fill.score-b { background: linear-gradient(90deg, #8A5A20, #C4822A); }
+    .fit-fill.score-c { background: linear-gradient(90deg, #7A2020, var(--red-lt)); }
+
+    /* Card Footer */
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 0.85rem 1.35rem;
+      border-top: 1px solid var(--border);
+      background: rgba(0,0,0,0.12);
+    }
+
+    .status-badge {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.25rem 0.7rem;
+      border-radius: 3px;
+    }
+
+    .st-toapply  { background: var(--blue-bg);  color: var(--blue-lt);  border: 1px solid rgba(45,111,168,0.3);  }
+    .st-applied  { background: var(--amber-bg); color: var(--amber-lt); border: 1px solid rgba(196,122,40,0.3);  }
+    .st-interview{ background: var(--green-bg); color: var(--green-lt); border: 1px solid rgba(31,144,106,0.3);  }
+    .st-offer    { background: var(--gold-dim); color: var(--gold-lt);  border: 1px solid rgba(200,169,81,0.3);  }
+
+    .footer-actions { display: flex; gap: 0.5rem; }
+
+    .btn-pos {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      padding: 0.35rem 0.85rem;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--cream-dim);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-pos:hover { border-color: var(--gold-dk); color: var(--gold-lt); }
+    .btn-pos.open  { border-color: var(--gold-dk); color: var(--gold-lt); background: var(--gold-dim); }
+
+    .btn-apply {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.35rem 1.1rem;
+      border-radius: 3px;
+      border: 1px solid var(--gold-dk);
+      background: var(--gold-dim);
+      color: var(--gold-lt);
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-apply:hover {
+      background: rgba(200,169,81,0.16);
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+
+    .btn-apply.copied {
+      border-color: rgba(31,144,106,0.5);
+      background: rgba(31,144,106,0.12);
+      color: var(--green-lt);
+    }
+
+    .btn-mark-applied {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.38rem 0.75rem;
+      border-radius: 4px;
+      border: 1px solid rgba(31,144,106,0.35);
+      background: transparent;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--green-lt);
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-mark-applied:hover {
+      background: rgba(31,144,106,0.14);
+      border-color: var(--green-lt);
+    }
+
+    .btn-mark-applied.is-applied {
+      border-color: rgba(31,144,106,0.2);
+      color: rgba(31,144,106,0.5);
+      cursor: default;
+    }
+
+    /* ── Positioning Panel ──────────────────────────────────────────────── */
+    .pos-panel {
+      display: none;
+      border-top: 1px solid var(--border);
+      background: var(--bg-panel);
+    }
+
+    .pos-panel.open { display: block; }
+
+    .pos-inner {
+      padding: 1.3rem 1.35rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .pos-section-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--gold-dk);
+      margin-bottom: 0.55rem;
+      padding-bottom: 0.3rem;
+      border-bottom: 1px solid rgba(200,169,81,0.12);
+    }
+
+    .pos-text {
+      font-size: 0.78rem;
+      font-weight: 400;
+      line-height: 1.6;
+      color: var(--cream-dim);
+    }
+
+    .signal-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .signal-list li {
+      font-size: 0.76rem;
+      color: var(--cream-dim);
+      display: flex;
+      align-items: flex-start;
+      gap: 0.45rem;
+      line-height: 1.45;
+    }
+
+    .signal-list li::before {
+      content: '→';
+      color: var(--gold-dk);
+      flex-shrink: 0;
+      font-size: 0.7rem;
+      margin-top: 0.1em;
+    }
+
+    .hook-box {
+      grid-column: 1 / -1;
+      background: rgba(200,169,81,0.05);
+      border: 1px solid rgba(200,169,81,0.14);
+      border-radius: 4px;
+      padding: 0.9rem 1.1rem;
+    }
+
+    .hook-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 0.4rem;
+    }
+
+    .hook-text {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-style: italic;
+      font-size: 0.82rem;
+      color: var(--cream-dim);
+      line-height: 1.55;
+    }
+
+    /* ── Empty State ────────────────────────────────────────────────────── */
+    .empty-state {
+      display: none;
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 5rem 2rem;
+      color: var(--cream-dim);
+    }
+
+    .empty-state.show { display: block; }
+
+    .empty-state p {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.1rem;
+      font-style: italic;
+    }
+
+    /* ── Toast ──────────────────────────────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      z-index: 9999;
+      background: var(--bg-card);
+      border: 1px solid rgba(200,169,81,0.35);
+      border-radius: 6px;
+      padding: 0.9rem 1.4rem;
+      font-size: 0.82rem;
+      color: var(--cream);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      transform: translateY(16px);
+      opacity: 0;
+      transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+    }
+
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast strong { color: var(--gold); }
+
+    /* ── Responsive ─────────────────────────────────────────────────────── */
+    @media (max-width: 960px) {
+      .job-grid { grid-template-columns: 1fr; }
+      .stats-banner { grid-template-columns: repeat(2, 1fr); }
+      .pos-inner { grid-template-columns: 1fr; }
+      .hook-box { grid-column: 1; }
+    }
+
+    @media (max-width: 640px) {
+      header, .stats-banner, .controls, .job-grid, .section-divider {
+        padding-left: 1rem;
+        padding-right: 1rem;
+      }
+      header { padding-top: 1.8rem; }
+      .header-top { flex-direction: column; gap: 1.2rem; }
+      .header-right { align-self: flex-start; }
+      .cred-stack { align-items: flex-start; }
+      .stats-banner { grid-template-columns: repeat(2, 1fr); gap: 0.7rem; }
+      .filter-group { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ──────────────────────────────────────────────────────────────── -->
+<header>
+  <div class="header-top">
+    <div>
+      <div class="header-eyebrow">Financial Services · Job Search Dashboard</div>
+      <div class="header-name">Sarik Eng <span>·</span> Job Board</div>
+      <div class="header-tagline">
+        Investment Representative &nbsp;·&nbsp; FSR &nbsp;·&nbsp; Associate Financial Advisor &nbsp;·&nbsp; Metro Vancouver
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="header-date" id="js-date"></div>
+      <div class="cred-stack">
+        <div class="cred-pill">CSC Exam 1 ✓ Passed</div>
+        <div class="cred-pill">CSC Exam 2 · June 2026</div>
+        <div class="cred-pill">CPH · In Progress</div>
+        <div class="cred-pill dim">MBA (Distinction) · UCW 2023</div>
+        <div class="cred-pill dim">Permanent Resident · BC</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ── STATS BANNER ─────────────────────────────────────────────────────────── -->
+<div class="stats-banner">
+  <div class="stat-card">
+    <div class="stat-label">Total Roles</div>
+    <div class="stat-value" id="js-total">—</div>
+    <div class="stat-note">in active pipeline</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Applied</div>
+    <div class="stat-value accent" id="js-applied">—</div>
+    <div class="stat-note">applications sent</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Interviews</div>
+    <div class="stat-value green" id="js-interviews">—</div>
+    <div class="stat-note">active conversations</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Top Fit Score</div>
+    <div class="stat-value accent" id="js-top-score">—</div>
+    <div class="stat-note" id="js-top-co">—</div>
+  </div>
+</div>
+
+<!-- ── CONTROLS ─────────────────────────────────────────────────────────────── -->
+<div class="controls">
+  <div class="search-wrap">
+    <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+    </svg>
+    <input type="text" class="search-input" id="js-search" placeholder="Search company, role, or keyword…">
+  </div>
+
+  <div class="filter-group">
+    <button class="filter-btn active" data-status="all">All</button>
+    <button class="filter-btn" data-status="To Apply">To Apply</button>
+    <button class="filter-btn" data-status="Applied">Applied</button>
+    <button class="filter-btn" data-status="Interview">Interview</button>
+    <button class="filter-btn" data-status="Offer">Offer</button>
+  </div>
+
+  <label class="toggle-wrap" for="js-fit-toggle">
+    <span class="toggle-label">Fit Score 70+</span>
+    <div class="toggle">
+      <input type="checkbox" id="js-fit-toggle">
+      <div class="toggle-track"></div>
+      <div class="toggle-thumb"></div>
+    </div>
+  </label>
+
+  <select class="sort-select" id="js-sort">
+    <option value="fit">Sort · Fit Score ↓</option>
+    <option value="date">Sort · Newest First</option>
+    <option value="company">Sort · Company A–Z</option>
+    <option value="salary">Sort · Salary ↓</option>
+  </select>
+</div>
+
+<!-- ── DIVIDER ──────────────────────────────────────────────────────────────── -->
+<div class="section-divider">
+  <div class="divider-line"></div>
+  <div class="divider-text"><span id="js-count">10</span>&nbsp; roles</div>
+  <div class="divider-line"></div>
+</div>
+
+<!-- ── JOB GRID ─────────────────────────────────────────────────────────────── -->
+<div class="job-grid" id="js-grid">
+  <div class="empty-state" id="js-empty"><p>No roles match your current filters.</p></div>
+</div>
+
+<!-- ── TOAST ────────────────────────────────────────────────────────────────── -->
+<div class="toast" id="js-toast">
+  <strong>Prompt copied.</strong> Paste into a new Claude session to generate your full application package.
+</div>
+
+<!-- ─────────────────────────────────────────────────────────────────────────── -->
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   MY PROFILE — pasted into every Apply Now prompt
+═══════════════════════════════════════════════════════════════════════════ */
+const MY_PROFILE = `• MBA (Distinction) — University Canada West, 2023
+• Canadian Securities Course (CSC): Exam 1 passed ✓ | Exam 2 scheduled June 2026
+• Conduct & Practices Handbook (CPH): In progress
+• 4+ years client-facing advisory in regulated environments
+• 50+ daily client interactions at TLC Healthcare Services (high-volume, compliance-sensitive)
+• Tax administration at Dhiman & Company — CRA-regulated financial workflows
+• Self-directed investor: equities, ETFs, and crypto (hands-on, not theoretical)
+• CRM: Zoho CRM | Data: Excel (Advanced), Tableau, Google Analytics
+• Regulated platforms: Kroll, ImmsBC
+• Languages: English (full professional) | Khmer (native) | French (classroom)
+• Permanent Resident of Canada — no sponsorship required
+• Target: ≥ $50,000 CAD base | In-office or Hybrid | Metro Vancouver`;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   JOB DATA
+═══════════════════════════════════════════════════════════════════════════ */
+const JOBS = [
+  {
+    id: 1,
+    company: "Vancity Credit Union",
+    logo: "VC",
+    role: "Financial Services Representative",
+    location: "Vancouver, BC",
+    arrangement: "Hybrid",
+    salary: "$52,000 – $58,000",
+    source: "Vancity Careers",
+    url: "https://recruiting.ultipro.com/VAN5000VCSCU/JobBoard/a46cbdaa-ca2c-49b6-8d2b-e0ceaafa0e25/?q=Financial+Services+Representative&o=1",
+    fitScore: 94,
+    daysAgo: 2,
+    status: "To Apply",
+    dealbreaker: false,
+    signals: [
+      "CSC preferred — not required at time of hire",
+      "Community & member-first mandate",
+      "High-volume member service in branch",
+      "Values-based culture · financial inclusion focus"
+    ],
+    whyFit: "Vancity's cooperative model aligns directly with your regulated client-service background at TLC Healthcare. Your CSC Exam 1 completion is a strong differentiator — most candidates arrive without it. The credit union's emphasis on financial inclusion and plain-language advice maps exactly to your stated 'why'.",
+    hook: "Open with your 50+ daily client interactions in a regulated healthcare environment, then connect your self-directed investing practice — Vancity values members who walk the talk on financial literacy."
+  },
+  {
+    id: 2,
+    company: "TD Canada Trust",
+    logo: "TD",
+    role: "Investment Representative",
+    location: "Vancouver, BC",
+    arrangement: "Hybrid",
+    salary: "$52,000 – $62,000",
+    source: "TD Careers Portal",
+    url: "https://jobs.td.com/en-CA/job-search-results/?keyword=Investment+Representative&location=Vancouver%2C+BC",
+    fitScore: 91,
+    daysAgo: 3,
+    status: "Applied",
+    dealbreaker: false,
+    signals: [
+      "CSC required within 6 months of hire",
+      "Warm referral + branch inbound model — no cold prospecting",
+      "Excel and CRM proficiency in job spec",
+      "Bilingual candidates actively recruited in Metro Vancouver"
+    ],
+    whyFit: "TD's Investment Representative is your primary target archetype. The CSC timeline aligns with your June 2026 Exam 2 date — you'll complete it within the required window. Your CRA-regulated workflows at Dhiman & Company signal financial literacy beyond a pure service background.",
+    hook: "Frame your healthcare client work as the same compliance-and-accuracy demands a regulated branch requires — 50+ clients/day, zero-error standard on sensitive records. TD interviewers respond to quantified volume."
+  },
+  {
+    id: 3,
+    company: "Scotiabank",
+    logo: "BNS",
+    role: "Investment Associate",
+    location: "Burnaby, BC",
+    arrangement: "On-site",
+    salary: "$54,000 – $66,000",
+    source: "Scotiabank Careers",
+    url: "https://jobs.scotiabank.com/job/Vancouver-ScotiaMcLeod-Investment-Associate-Vancouver-BC-V6B4N9/600418917/",
+    fitScore: 89,
+    daysAgo: 5,
+    status: "To Apply",
+    dealbreaker: false,
+    signals: [
+      "Wealth management support — path to full advisor",
+      "Securities licensing preferred (not required at hire)",
+      "Bilingual candidates valued in Metro Vancouver market",
+      "Team-based client service model"
+    ],
+    whyFit: "Scotiabank's Investment Associate is a natural entry point into full wealth advisory. Your Khmer fluency is a genuine differentiator in Metro Vancouver — Scotiabank actively targets diverse communities. The support-role structure matches your entry-level IC target perfectly.",
+    hook: "Lead with your MBA (Distinction) and CSC progression as evidence of a deliberate credential roadmap. Scotiabank invests in Associates who show long-term commitment — make that case explicitly."
+  },
+  {
+    id: 4,
+    company: "RBC Royal Bank",
+    logo: "RBC",
+    role: "Financial Services Representative",
+    location: "Vancouver, BC",
+    arrangement: "Hybrid",
+    salary: "$50,000 – $60,000",
+    source: "RBC Careers",
+    url: "https://jobs.rbc.com/ca/en/search-results?keywords=Financial+Services+Representative&location=Vancouver%2C+BC",
+    fitScore: 88,
+    daysAgo: 7,
+    status: "Interview",
+    dealbreaker: false,
+    signals: [
+      "Warm referral and inbound client model — no cold calling",
+      "Formal training program with CSC licensing support",
+      "STAR-format behavioural interviews",
+      "Compliance-first regulated branch environment"
+    ],
+    whyFit: "RBC's FSR model uses warm referrals and inbound requests — your cold-calling dealbreaker is not triggered here. Their formal training program actively supports CSC completion. Your compliance background from TLC Healthcare maps cleanly to RBC's regulated branch standards.",
+    hook: "Prepare STAR-format stories before the interview. RBC recruiters go deep on behavioural evidence. Lead with TLC Healthcare: 50+ clients/day, sensitive medical records, zero-tolerance accuracy — that story lands."
+  },
+  {
+    id: 5,
+    company: "Coast Capital Savings",
+    logo: "CC",
+    role: "Investment Services Representative",
+    location: "Surrey, BC",
+    arrangement: "On-site",
+    salary: "$50,000 – $57,000",
+    source: "Coast Capital Careers",
+    url: "https://careers.coastcapitalsavings.com/job/Surrey-Member-Advice-Specialist-Guildford-Branch-Brit-V3R-9W3/1389249100/",
+    fitScore: 87,
+    daysAgo: 4,
+    status: "To Apply",
+    dealbreaker: false,
+    signals: [
+      "Member-owned cooperative — relationship depth over sales volume",
+      "CSC or willingness to obtain within 12 months",
+      "Digital financial tools push — CRM and analytics valued",
+      "Accessibility: Surrey Central SkyTrain adjacent"
+    ],
+    whyFit: "Coast Capital's cooperative culture rewards relationship depth — a stronger fit for your advisory-first orientation than a pure sales role. Your Zoho CRM and Excel proficiency are direct matches to their digital tools mandate. Surrey is fully SkyTrain-accessible from Vancouver.",
+    hook: "Coast Capital screens for values alignment before skills. Open with why cooperative banking appeals to you personally, then anchor with your client service track record and CRM/analytics background."
+  },
+  {
+    id: 6,
+    company: "BMO Bank of Montreal",
+    logo: "BMO",
+    role: "Associate Financial Advisor",
+    location: "Vancouver, BC",
+    arrangement: "Hybrid",
+    salary: "$55,000 – $70,000",
+    source: "BMO Careers Portal",
+    url: "https://jobs.bmo.com/global/en/job/R250030689/Financial-Planner",
+    fitScore: 85,
+    daysAgo: 6,
+    status: "To Apply",
+    dealbreaker: false,
+    signals: [
+      "Highest salary ceiling of Big 5 entry roles",
+      "CSC required; CFP pathway strongly preferred",
+      "Portfolio reporting and analytics support duties",
+      "Structured path from Associate to full Financial Advisor"
+    ],
+    whyFit: "BMO's Associate FA offers the highest base ceiling in your Big 5 target set. Your MBA demonstrates analytical capability they actively screen for. The role supports senior advisors — perfectly matched to your entry-level IC target. CFP pathway aligns with your long-term credential roadmap.",
+    hook: "Frame your CSC as step one of a deliberate credential stack toward CFP. BMO actively invests in Associates who demonstrate a multi-year development plan — come to the interview with that roadmap written out."
+  },
+  {
+    id: 7,
+    company: "CIBC",
+    logo: "CIBC",
+    role: "Investment Representative",
+    location: "Vancouver, BC",
+    arrangement: "Hybrid",
+    salary: "$53,000 – $63,000",
+    source: "CIBC Careers",
+    url: "https://jobs.cibc.com/ca/en/search-results?keywords=Investment+Representative&location=Vancouver%2C+BC",
+    fitScore: 84,
+    daysAgo: 7,
+    status: "Applied",
+    dealbreaker: false,
+    signals: [
+      "CSC required within 180 days of hire",
+      "Outbound calls to existing clients only — NOT cold prospecting",
+      "Strong base + performance bonus structure",
+      "Branch-based with digital and phone channel support"
+    ],
+    whyFit: "CIBC's IR role includes outbound calling — but exclusively to existing clients, not cold prospecting. This stays within your dealbreaker boundary. Your Zoho CRM and Excel analytics background aligns with CIBC's digital banking push. Performance bonus upside extends total compensation above base.",
+    hook: "Be direct that you're comfortable initiating contact with existing and warm clients. CIBC recruiters test for call reluctance in screening — proactively address it. Lean on your 50+ daily interactions as proof of comfort with high-volume client outreach."
+  },
+  {
+    id: 8,
+    company: "Raymond James Ltd.",
+    logo: "RJ",
+    role: "Associate Wealth Advisor",
+    location: "Vancouver, BC",
+    arrangement: "On-site",
+    salary: "$48,000 – $58,000",
+    source: "LinkedIn",
+    url: "https://www.raymondjames.ca/careers/corporate-opportunities?sc_lang=en",
+    fitScore: 74,
+    daysAgo: 14,
+    status: "To Apply",
+    dealbreaker: false,
+    signals: [
+      "Independent boutique — analytical support over sales volume",
+      "Tableau and Excel listed as required tools",
+      "Securities licensing preferred (not required at hire)",
+      "Portfolio reporting and research support focus"
+    ],
+    whyFit: "Raymond James boutique culture rewards analytical precision over volume. Your Tableau and Excel skills are genuine differentiators — most entry-level candidates lack them. Base floor is slightly below your $50K minimum; negotiate up using your MBA and analytics credentials as leverage.",
+    hook: "Lead with Tableau and quantitative analysis. Boutique practices value precision and intellectual independence. Raise your salary expectation early in screening — the role range has upside, but you need to claim it."
+  },
+  {
+    id: 9,
+    company: "Edward Jones",
+    logo: "EJ",
+    role: "Financial Advisor Trainee",
+    location: "Vancouver, BC",
+    arrangement: "On-site",
+    salary: "$30,000 draw + commission",
+    source: "Indeed",
+    url: "https://ca.indeed.com/q-edward-jones-financial-advisor-l-vancouver,-bc-jobs.html",
+    fitScore: 28,
+    daysAgo: 3,
+    status: "To Apply",
+    dealbreaker: true,
+    dealbreakersTriggered: ["Commission-heavy draw — no guaranteed base above $30K", "Pure cold-call acquisition model required"],
+    signals: [
+      "Cold-call prospecting from day one — 150+ dials/week expected",
+      "Draw against commission — not a true base salary",
+      "IIROC licensing must be completed within 90 days",
+      "Self-managed territory — no warm leads provided"
+    ],
+    whyFit: "⚠️ This role hits two of your hard dealbreakers: a commission-draw structure with no guaranteed base above $30K, and a pure cold-call prospecting mandate with no warm leads. Do not apply in current form.",
+    hook: "N/A — two dealbreakers triggered. Do not apply unless confirmed base salary ≥ $50K and a warm/inbound lead model is in place."
+  },
+  {
+    id: 10,
+    company: "Manulife Securities",
+    logo: "MFC",
+    role: "Insurance & Investment Advisor",
+    location: "Metro Vancouver",
+    arrangement: "Remote",
+    salary: "Commission only",
+    source: "Indeed",
+    url: "https://ca.indeed.com/q-manulife-securities-insurance-investment-advisor-l-vancouver,-bc-jobs.html",
+    fitScore: 12,
+    daysAgo: 5,
+    status: "To Apply",
+    dealbreaker: true,
+    dealbreakersTriggered: ["Commission-only — zero guaranteed base", "LLQP required (insurance license not currently held)", "Insurance-primary role"],
+    signals: [
+      "LLQP license required before start — no flexibility",
+      "Commission-only compensation — no base salary component",
+      "Insurance products as primary offering",
+      "No warm leads — full self-generated pipeline"
+    ],
+    whyFit: "⚠️ Three dealbreakers triggered: commission-only structure, LLQP requirement (you do not currently hold this license), and insurance-primary mandate. This role is not aligned with your current profile, credentials, or compensation requirements.",
+    hook: "N/A — three dealbreakers. Do not apply. Revisit only if you obtain LLQP in the future and seek an insurance-investment hybrid career."
+  },
+  {
+    id: 11,
+    company: "Scotiabank",
+    logo: "BNS",
+    role: "Customer Experience Associate – Burnaby Main Branch",
+    location: "Burnaby, BC",
+    arrangement: "On-site",
+    salary: "~$34K/yr (30h/wk est.)",
+    source: "Scotiabank Careers",
+    url: "https://jobs.scotiabank.com/job/Burnaby-Customer-Experience-Associate-Burnaby-Main-Branch-(30-hoursweekly)-BC-V5H1Z5/601841017/",
+    fitScore: 70,
+    daysAgo: 2,
+    status: "To Apply",
+    dealbreaker: false,
+    dealbreakersTriggered: [],
+    signals: [
+      "Part-time 30h/week — confirmed active posting",
+      "Entry-level frontline banking role at Big 5",
+      "Direct path to FSR/Investment Representative via Scotia licensing track",
+      "Burnaby Main Branch — Metro Vancouver ✓",
+      "Salary estimated below $50K due to part-time hours"
+    ],
+    whyFit: "Strong entry point at a Big 5 bank. Burnaby Main is a high-traffic branch with cross-sell opportunities. Your TLC Healthcare client service experience (50+ daily interactions) and CSC progress make you a competitive CEA candidate. Part-time hours reduce the salary score, but this role builds the licensed banking track toward FSR.",
+    hook: "Scotia CEA → FSR pathway is well-established. Mention your CSC Exam 1 pass and Exam 2 target (June 2026) to signal your licensing trajectory upfront."
+  },
+  {
+    id: 12,
+    company: "TD Canada Trust",
+    logo: "TD",
+    role: "Customer Experience Associate",
+    location: "Metro Vancouver, BC",
+    arrangement: "On-site",
+    salary: "$42–48K est.",
+    source: "TD Careers",
+    url: "https://jobs.td.com/en-CA/job-search-results/?keyword=Customer+Experience+Associate&location=Metro+Vancouver%2C+BC",
+    fitScore: 78,
+    daysAgo: 1,
+    status: "To Apply",
+    dealbreaker: false,
+    dealbreakersTriggered: [],
+    signals: [
+      "Full-time roles regularly available across Metro Vancouver TD branches",
+      "TD CEA → Personal Banking Associate → Investment Adviser career track",
+      "Strong internal mobility at TD for licensed candidates",
+      "CSC in progress aligns with TD's licensing support program",
+      "Your regulated systems experience (Kroll, ImmsBC) signals compliance aptitude"
+    ],
+    whyFit: "TD's Metro Vancouver branch network regularly hires CEAs on a clear track to Personal Banking Associate and Investment Adviser. Your dual CSC exam path and 50+ daily client interaction experience at TLC Healthcare are strong signals. Full-time positions typically $42–48K — within reach of the $50K target.",
+    hook: "TD invests in licensing existing CEAs. Lead with your CSC progress and frame your goal clearly: advisory role within 12–18 months."
+  },
+  {
+    id: 13,
+    company: "RBC Royal Bank",
+    logo: "RBC",
+    role: "Customer Experience Associate",
+    location: "Metro Vancouver, BC",
+    arrangement: "On-site",
+    salary: "$43–50K est.",
+    source: "RBC Careers",
+    url: "https://jobs.rbc.com/ca/en/search-results?keywords=Customer+Experience+Associate&location=Vancouver%2C+BC",
+    fitScore: 75,
+    daysAgo: 2,
+    status: "To Apply",
+    dealbreaker: false,
+    dealbreakersTriggered: [],
+    signals: [
+      "RBC consistently hires CEAs across Metro Vancouver branches",
+      "Clear progression path to Financial Services Representative at RBC",
+      "RBC Advice Centre model — warm inbound interactions, no cold-calling",
+      "Salary range for full-time CEA typically $43–50K",
+      "MBA + CSC combination differentiates you at entry branch level"
+    ],
+    whyFit: "RBC's branch and Advice Centre model emphasizes warm advisory — no cold-call mandate. CEA roles provide a structured path to FSR, aligning directly with your target. Your MBA (Distinction) and CSC Exam 1 credential stand out against typical applicants at this level.",
+    hook: "Address the overqualification concern head-on: 'I want to build licensed banking experience from the branch level up — the CEA role is the right starting point for that path.'"
+  }
+];
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════════════════════════════ */
+function scoreClass(n) {
+  if (n >= 85) return 'score-s';
+  if (n >= 70) return 'score-a';
+  if (n >= 50) return 'score-b';
+  return 'score-c';
+}
+
+function arrClass(a) {
+  return { 'Hybrid': 'hybrid', 'On-site': 'onsite', 'Remote': 'remote' }[a] || 'onsite';
+}
+
+function statusClass(s) {
+  return { 'To Apply': 'st-toapply', 'Applied': 'st-applied', 'Interview': 'st-interview', 'Offer': 'st-offer' }[s] || 'st-toapply';
+}
+
+function postedLabel(d) {
+  if (d === 0) return 'Today';
+  if (d === 1) return 'Yesterday';
+  if (d < 7)  return `${d} days ago`;
+  const w = Math.floor(d / 7);
+  return `${w} week${w > 1 ? 's' : ''} ago`;
+}
+
+function parseSalary(s) {
+  const m = s.replace(/[^0-9]/g, '');
+  return parseInt(m) || 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PROMPT BUILDER
+═══════════════════════════════════════════════════════════════════════════ */
+function buildPrompt(job) {
+  const signals = job.signals.map(s => `  • ${s}`).join('\n');
+  const dbNote = job.dealbreaker
+    ? `\n⚠️  DEALBREAKER FLAGS:\n${job.dealbreakersTriggered.map(d => `  • ${d}`).join('\n')}\nProceed only if compensation and lead structure can be confirmed otherwise.\n`
+    : '';
+
+  return `I'm building my application for the role below. Please help me create a complete, tailored application package.
+
+════════════════════════════════════════════════════
+ROLE:       ${job.role}
+COMPANY:    ${job.company}
+LOCATION:   ${job.location} (${job.arrangement})
+SALARY:     ${job.salary}
+FIT SCORE:  ${job.fitScore}/100
+POSTED:     ${postedLabel(job.daysAgo)}
+${dbNote}
+════════════════════════════════════════════════════
+
+MY PROFILE:
+${MY_PROFILE}
+
+KEY JD SIGNALS TO ADDRESS:
+${signals}
+
+WHY I'M A FIT (use as positioning):
+${job.whyFit}
+
+RECOMMENDED OUTREACH HOOK:
+${job.hook}
+
+════════════════════════════════════════════════════
+PLEASE DELIVER ALL OF THE FOLLOWING:
+
+1. COVER LETTER
+   Three tight, tailored paragraphs for ${job.company}. Open with the hook above.
+   No filler openers ("I am writing to express…"). Be direct and confident.
+
+2. RESUME BULLET REWRITES
+   Three bullet point rewrites from my experience that better match this JD's
+   language, keywords, and requirements. Focus on TLC Healthcare and Dhiman & Co.
+
+3. LINKEDIN OUTREACH MESSAGE
+   A connection request to a hiring manager or recruiter at ${job.company}.
+   Under 300 characters. Warm, specific, not generic.
+
+4. INTERVIEW PREP
+   Three likely screening questions based on the JD signals above, each with
+   a suggested answer framework (STAR format where relevant).
+
+5. ONE COMPANY RESEARCH TIP
+   One specific thing to look up about ${job.company} before the interview
+   that will make me stand out — not generic ("read their website") advice.
+════════════════════════════════════════════════════`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STATS
+═══════════════════════════════════════════════════════════════════════════ */
+function updateStats() {
+  const total      = JOBS.length;
+  const applied    = JOBS.filter(j => j.status === 'Applied').length;
+  const interviews = JOBS.filter(j => j.status === 'Interview').length;
+  const clean      = JOBS.filter(j => !j.dealbreaker);
+  const top        = clean.reduce((a, b) => b.fitScore > a.fitScore ? b : a, clean[0]);
+
+  document.getElementById('js-total').textContent      = total;
+  document.getElementById('js-applied').textContent    = applied;
+  document.getElementById('js-interviews').textContent = interviews;
+  document.getElementById('js-top-score').textContent  = top.fitScore;
+  document.getElementById('js-top-co').textContent     = top.company;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════════════════════════════════════ */
+function renderCard(job, idx) {
+  const sc  = scoreClass(job.fitScore);
+  const ac  = arrClass(job.arrangement);
+  const stc = statusClass(job.status);
+
+  const dbBanner = job.dealbreaker
+    ? `<div class="db-banner">⚠ Dealbreaker flags · ${job.dealbreakersTriggered.join(' · ')}</div>`
+    : '';
+
+  const signalsHtml = job.signals.map(s => `<li>${s}</li>`).join('');
+
+  return `
+  <div class="job-card ${job.dealbreaker ? 'is-dealbreaker' : ''}"
+       data-id="${job.id}"
+       data-status="${job.status}"
+       data-fit="${job.fitScore}"
+       data-co="${job.company.toLowerCase()}"
+       data-role="${job.role.toLowerCase()}"
+       data-signals="${job.signals.join(' ').toLowerCase()}"
+       style="animation-delay:${idx * 0.055}s">
+    ${dbBanner}
+    <div class="card-body">
+      <div class="card-top">
+        <div class="co-logo">${job.logo}</div>
+        <div class="card-title-block">
+          <div class="co-name">${job.company}</div>
+          <div class="role-title">${job.role}</div>
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="chip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+          </svg>
+          ${job.location}
+        </span>
+        <span class="sep">·</span>
+        <span class="badge ${ac}">${job.arrangement}</span>
+        <span class="sep">·</span>
+        <span class="chip">${postedLabel(job.daysAgo)}</span>
+      </div>
+      <div class="card-row">
+        <div class="salary">${job.salary}</div>
+        ${job.url
+          ? `<a class="source-tag source-link" href="${job.url}" target="_blank" rel="noopener">${job.source} ↗</a>`
+          : `<div class="source-tag">${job.source}</div>`}
+      </div>
+      <div class="fit-wrap">
+        <div class="fit-header">
+          <span class="fit-label-text">Fit Score</span>
+          <span class="fit-number ${sc}">${job.fitScore}<sub>/100</sub></span>
+        </div>
+        <div class="fit-track">
+          <div class="fit-fill ${sc}" data-w="${job.fitScore}"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <span class="status-badge ${stc}">${job.status}</span>
+      <div class="footer-actions">
+        ${job.status === 'To Apply' ? `<button class="btn-mark-applied" id="applied-btn-${job.id}" onclick="markApplied(${job.id})">✓ Mark Applied</button>` : ''}
+        <button class="btn-pos" id="pos-btn-${job.id}" onclick="togglePanel(${job.id})">Positioning</button>
+        <button class="btn-apply" id="apply-btn-${job.id}" onclick="copyPrompt(${job.id})">Apply Now →</button>
+      </div>
+    </div>
+    <div class="pos-panel" id="pos-panel-${job.id}">
+      <div class="pos-inner">
+        <div>
+          <div class="pos-section-title">Why I'm a Fit</div>
+          <div class="pos-text">${job.whyFit}</div>
+        </div>
+        <div>
+          <div class="pos-section-title">Key JD Signals</div>
+          <ul class="signal-list">${signalsHtml}</ul>
+        </div>
+        <div class="hook-box">
+          <div class="hook-label">Recommended Hook for Outreach &amp; Screening</div>
+          <div class="hook-text">${job.hook}</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderGrid(list) {
+  const grid  = document.getElementById('js-grid');
+  const empty = document.getElementById('js-empty');
+
+  if (list.length === 0) {
+    grid.innerHTML = '';
+    grid.appendChild(empty);
+    empty.classList.add('show');
+  } else {
+    grid.innerHTML = list.map((j, i) => renderCard(j, i)).join('');
+    empty.classList.remove('show');
+    grid.appendChild(empty);
+    animateBars();
+  }
+
+  document.getElementById('js-count').textContent = list.length;
+}
+
+function animateBars() {
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.fit-fill').forEach((bar, i) => {
+      const target = bar.dataset.w + '%';
+      setTimeout(() => { bar.style.width = target; }, 80 + i * 50);
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FILTER + SORT
+═══════════════════════════════════════════════════════════════════════════ */
+function getFiltered() {
+  const q      = document.getElementById('js-search').value.toLowerCase().trim();
+  const status = document.querySelector('.filter-btn.active').dataset.status;
+  const fitMin = document.getElementById('js-fit-toggle').checked;
+  const sort   = document.getElementById('js-sort').value;
+
+  let list = JOBS.filter(j => {
+    const matchQ   = !q || j.company.toLowerCase().includes(q) || j.role.toLowerCase().includes(q) || j.signals.some(s => s.toLowerCase().includes(q));
+    const matchSt  = status === 'all' || j.status === status;
+    const matchFit = !fitMin || j.fitScore >= 70;
+    return matchQ && matchSt && matchFit;
+  });
+
+  list.sort((a, b) => {
+    // Applied jobs always sink to the bottom in the All view
+    if (status === 'all') {
+      const aApplied = a.status === 'Applied' ? 1 : 0;
+      const bApplied = b.status === 'Applied' ? 1 : 0;
+      if (aApplied !== bApplied) return aApplied - bApplied;
+    }
+    if (sort === 'fit')     return b.fitScore - a.fitScore;
+    if (sort === 'date')    return a.daysAgo  - b.daysAgo;
+    if (sort === 'company') return a.company.localeCompare(b.company);
+    if (sort === 'salary')  return parseSalary(b.salary) - parseSalary(a.salary);
+    return 0;
+  });
+
+  return list;
+}
+
+function refresh() { renderGrid(getFiltered()); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INTERACTIONS
+═══════════════════════════════════════════════════════════════════════════ */
+function togglePanel(id) {
+  const panel = document.getElementById(`pos-panel-${id}`);
+  const btn   = document.getElementById(`pos-btn-${id}`);
+  if (!panel) return;
+  panel.classList.toggle('open');
+  btn.classList.toggle('open');
+  btn.textContent = panel.classList.contains('open') ? 'Hide ↑' : 'Positioning';
+}
+
+function copyPrompt(id) {
+  const job = JOBS.find(j => j.id === id);
+  if (!job) return;
+
+  const text = buildPrompt(job);
+  const btn  = document.getElementById(`apply-btn-${id}`);
+
+  const markCopied = () => {
+    if (btn) { btn.textContent = '✓ Copied!'; btn.classList.add('copied'); }
+    showToast();
+    setTimeout(() => {
+      if (btn) { btn.textContent = 'Apply Now →'; btn.classList.remove('copied'); }
+    }, 2500);
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(markCopied).catch(() => fallbackCopy(text, markCopied));
+  } else {
+    fallbackCopy(text, markCopied);
+  }
+}
+
+function fallbackCopy(text, cb) {
+  const ta = Object.assign(document.createElement('textarea'), {
+    value: text, style: 'position:fixed;opacity:0'
+  });
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try { document.execCommand('copy'); cb(); } catch(e) {}
+  document.body.removeChild(ta);
+}
+
+function showToast() {
+  const t = document.getElementById('js-toast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3800);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   APPLIED TRACKING
+═══════════════════════════════════════════════════════════════════════════ */
+const APPLIED_KEY = 'jb_applied_ids';
+
+function loadAppliedFromStorage() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(APPLIED_KEY) || '[]');
+    saved.forEach(id => {
+      const job = JOBS.find(j => j.id === id);
+      if (job) job.status = 'Applied';
+    });
+  } catch(e) {}
+}
+
+function saveAppliedToStorage() {
+  const ids = JOBS.filter(j => j.status === 'Applied').map(j => j.id);
+  localStorage.setItem(APPLIED_KEY, JSON.stringify(ids));
+}
+
+function markApplied(id) {
+  const job = JOBS.find(j => j.id === id);
+  if (!job || job.status === 'Applied') return;
+  job.status = 'Applied';
+  saveAppliedToStorage();
+  updateStats();
+  refresh();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  loadAppliedFromStorage();
+  // Date
+  const d = new Date();
+  document.getElementById('js-date').textContent =
+    d.toLocaleDateString('en-CA', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  // Status filter buttons
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      refresh();
+    });
+  });
+
+  document.getElementById('js-search').addEventListener('input', refresh);
+  document.getElementById('js-fit-toggle').addEventListener('change', refresh);
+  document.getElementById('js-sort').addEventListener('change', refresh);
+
+  updateStats();
+  refresh();
+});
+</script>
+</body>
+</html>
