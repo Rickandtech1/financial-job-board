@@ -580,6 +580,19 @@
       border: 1px solid var(--border);
       padding: 0.15rem 0.55rem;
       border-radius: 2px;
+      text-decoration: none;
+    }
+
+    a.source-link {
+      color: var(--gold-dk);
+      border-color: rgba(200,169,81,0.3);
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    a.source-link:hover {
+      color: var(--gold);
+      border-color: var(--gold);
     }
 
     /* Fit Score */
@@ -713,6 +726,34 @@
       border-color: rgba(31,144,106,0.5);
       background: rgba(31,144,106,0.12);
       color: var(--green-lt);
+    }
+
+    .btn-mark-applied {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.38rem 0.75rem;
+      border-radius: 4px;
+      border: 1px solid rgba(31,144,106,0.35);
+      background: transparent;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--green-lt);
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-mark-applied:hover {
+      background: rgba(31,144,106,0.14);
+      border-color: var(--green-lt);
+    }
+
+    .btn-mark-applied.is-applied {
+      border-color: rgba(31,144,106,0.2);
+      color: rgba(31,144,106,0.5);
+      cursor: default;
     }
 
     /* ── Positioning Panel ──────────────────────────────────────────────── */
@@ -992,6 +1033,7 @@ const JOBS = [
     arrangement: "Hybrid",
     salary: "$52,000 – $58,000",
     source: "Vancity Careers",
+    url: "https://recruiting.ultipro.com/VAN5000VCSCU/JobBoard/a46cbdaa-ca2c-49b6-8d2b-e0ceaafa0e25/",
     fitScore: 94,
     daysAgo: 2,
     status: "To Apply",
@@ -1014,6 +1056,7 @@ const JOBS = [
     arrangement: "Hybrid",
     salary: "$52,000 – $62,000",
     source: "TD Careers Portal",
+    url: "https://jobs.td.com/en-CA/job-search-results/?keyword=Investment+Representative&location=Vancouver%2C+BC",
     fitScore: 91,
     daysAgo: 3,
     status: "Applied",
@@ -1036,6 +1079,7 @@ const JOBS = [
     arrangement: "On-site",
     salary: "$54,000 – $66,000",
     source: "Scotiabank Careers",
+    url: "https://jobs.scotiabank.com/search/?q=investment+associate&locationsearch=Burnaby%2C+BC",
     fitScore: 89,
     daysAgo: 5,
     status: "To Apply",
@@ -1058,6 +1102,7 @@ const JOBS = [
     arrangement: "Hybrid",
     salary: "$50,000 – $60,000",
     source: "RBC Careers",
+    url: "https://jobs.rbc.com/ca/en/search-results?keywords=Financial+Services+Representative&location=Vancouver%2C+BC",
     fitScore: 88,
     daysAgo: 7,
     status: "Interview",
@@ -1080,6 +1125,7 @@ const JOBS = [
     arrangement: "On-site",
     salary: "$50,000 – $57,000",
     source: "Coast Capital Careers",
+    url: "https://careers.coastcapitalsavings.com/",
     fitScore: 87,
     daysAgo: 4,
     status: "To Apply",
@@ -1102,6 +1148,7 @@ const JOBS = [
     arrangement: "Hybrid",
     salary: "$55,000 – $70,000",
     source: "BMO Careers Portal",
+    url: "https://jobs.bmo.com/ca/en/search-results?keywords=Associate+Financial+Advisor&location=Vancouver%2C+BC",
     fitScore: 85,
     daysAgo: 6,
     status: "To Apply",
@@ -1124,6 +1171,7 @@ const JOBS = [
     arrangement: "Hybrid",
     salary: "$53,000 – $63,000",
     source: "CIBC Careers",
+    url: "https://jobs.cibc.com/ca/en/search-results?keywords=Investment+Representative&location=Vancouver%2C+BC",
     fitScore: 84,
     daysAgo: 7,
     status: "Applied",
@@ -1146,6 +1194,7 @@ const JOBS = [
     arrangement: "On-site",
     salary: "$48,000 – $58,000",
     source: "LinkedIn",
+    url: "https://www.linkedin.com/jobs/search/?keywords=Associate+Wealth+Advisor+Raymond+James&location=Vancouver%2C+BC",
     fitScore: 74,
     daysAgo: 14,
     status: "To Apply",
@@ -1168,6 +1217,7 @@ const JOBS = [
     arrangement: "On-site",
     salary: "$30,000 draw + commission",
     source: "Indeed",
+    url: "https://ca.indeed.com/q-edward-jones-financial-advisor-l-vancouver,-bc-jobs.html",
     fitScore: 28,
     daysAgo: 3,
     status: "To Apply",
@@ -1191,6 +1241,7 @@ const JOBS = [
     arrangement: "Remote",
     salary: "Commission only",
     source: "Indeed",
+    url: "https://ca.indeed.com/q-manulife-securities-insurance-investment-advisor-l-vancouver,-bc-jobs.html",
     fitScore: 12,
     daysAgo: 5,
     status: "To Apply",
@@ -1359,7 +1410,9 @@ function renderCard(job, idx) {
       </div>
       <div class="card-row">
         <div class="salary">${job.salary}</div>
-        <div class="source-tag">${job.source}</div>
+        ${job.url
+          ? `<a class="source-tag source-link" href="${job.url}" target="_blank" rel="noopener">${job.source} ↗</a>`
+          : `<div class="source-tag">${job.source}</div>`}
       </div>
       <div class="fit-wrap">
         <div class="fit-header">
@@ -1374,6 +1427,7 @@ function renderCard(job, idx) {
     <div class="card-footer">
       <span class="status-badge ${stc}">${job.status}</span>
       <div class="footer-actions">
+        ${job.status === 'To Apply' ? `<button class="btn-mark-applied" id="applied-btn-${job.id}" onclick="markApplied(${job.id})">✓ Mark Applied</button>` : ''}
         <button class="btn-pos" id="pos-btn-${job.id}" onclick="togglePanel(${job.id})">Positioning</button>
         <button class="btn-apply" id="apply-btn-${job.id}" onclick="copyPrompt(${job.id})">Apply Now →</button>
       </div>
@@ -1441,6 +1495,12 @@ function getFiltered() {
   });
 
   list.sort((a, b) => {
+    // Applied jobs always sink to the bottom in the All view
+    if (status === 'all') {
+      const aApplied = a.status === 'Applied' ? 1 : 0;
+      const bApplied = b.status === 'Applied' ? 1 : 0;
+      if (aApplied !== bApplied) return aApplied - bApplied;
+    }
     if (sort === 'fit')     return b.fitScore - a.fitScore;
     if (sort === 'date')    return a.daysAgo  - b.daysAgo;
     if (sort === 'company') return a.company.localeCompare(b.company);
@@ -1504,9 +1564,39 @@ function showToast() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   APPLIED TRACKING
+═══════════════════════════════════════════════════════════════════════════ */
+const APPLIED_KEY = 'jb_applied_ids';
+
+function loadAppliedFromStorage() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(APPLIED_KEY) || '[]');
+    saved.forEach(id => {
+      const job = JOBS.find(j => j.id === id);
+      if (job) job.status = 'Applied';
+    });
+  } catch(e) {}
+}
+
+function saveAppliedToStorage() {
+  const ids = JOBS.filter(j => j.status === 'Applied').map(j => j.id);
+  localStorage.setItem(APPLIED_KEY, JSON.stringify(ids));
+}
+
+function markApplied(id) {
+  const job = JOBS.find(j => j.id === id);
+  if (!job || job.status === 'Applied') return;
+  job.status = 'Applied';
+  saveAppliedToStorage();
+  updateStats();
+  refresh();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
+  loadAppliedFromStorage();
   // Date
   const d = new Date();
   document.getElementById('js-date').textContent =
