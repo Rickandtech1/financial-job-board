@@ -3,7 +3,7 @@ name: Email Job Digest
 on:
   push:
     branches: [main]
-    paths: [job_board.html]
+    paths: [index.html]
   workflow_dispatch:
 
 jobs:
@@ -17,7 +17,7 @@ jobs:
         run: |
           node - <<'EOF' > /tmp/new_jobs.json
           const fs = require('fs');
-          const html = fs.readFileSync('job_board.html', 'utf8');
+          const html = fs.readFileSync('index.html', 'utf8');
           const match = html.match(/const JOBS\s*=\s*(\[[\s\S]*?\]);/);
           if (!match) { console.log('[]'); process.exit(0); }
           const JOBS = eval(match[1]);
