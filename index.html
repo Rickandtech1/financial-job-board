@@ -403,9 +403,7 @@
     .job-grid {
       position: relative;
       z-index: 10;
-      max-width: 1440px;
-      margin: 0 auto;
-      padding: 0 2.5rem 5rem;
+      padding: 0 2rem 2rem;
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 1.2rem;
@@ -948,6 +946,160 @@
       .stats-banner { grid-template-columns: repeat(2, 1fr); gap: 0.7rem; }
       .filter-group { display: none; }
     }
+
+    /* ── Board Layout ───────────────────────────────────────────────────── */
+    .board-layout {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0 0 5rem;
+    }
+
+    .applied-sidebar {
+      width: 0;
+      overflow: hidden;
+      flex-shrink: 0;
+      position: sticky;
+      top: 1.5rem;
+      max-height: calc(100vh - 3rem);
+      overflow-y: auto;
+      transition: width 0.35s ease;
+      background: var(--bg-card);
+      border-right: 1px solid var(--border);
+      border-radius: 6px 0 0 6px;
+    }
+
+    .applied-sidebar.has-items {
+      width: 240px;
+      padding: 1.2rem 1rem;
+    }
+
+    .sidebar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.6rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+
+    .sidebar-count {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.1rem;
+      color: var(--gold-lt);
+    }
+
+    .sidebar-empty {
+      font-size: 0.72rem;
+      color: var(--cream-dim);
+      opacity: 0.6;
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.55rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      animation: fadeSlideIn 0.25s ease;
+    }
+
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateX(-12px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .sidebar-logo {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.55rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      background: var(--bg-logo);
+      color: var(--gold);
+      border: 1px solid rgba(200,169,81,0.2);
+      border-radius: 4px;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .sidebar-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .sidebar-co {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--cream-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sidebar-role {
+      font-size: 0.68rem;
+      color: var(--cream);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
+
+    .sidebar-undo {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--cream-dim);
+      border-radius: 3px;
+      width: 22px;
+      height: 22px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sidebar-undo:hover {
+      border-color: var(--gold-dk);
+      color: var(--gold-lt);
+    }
+
+    /* ── Card exit animation ─────────────────────────────────────────── */
+    @keyframes cardExit {
+      to { opacity: 0; transform: translateX(-24px) scale(0.97); }
+    }
+
+    .job-card.is-removing {
+      animation: cardExit 0.28s ease forwards;
+      pointer-events: none;
+    }
+
+    .board-main {
+      flex: 1;
+      min-width: 0;
+    }
   </style>
 </head>
 <body>
@@ -1040,9 +1192,22 @@
   <div class="divider-line"></div>
 </div>
 
-<!-- ── JOB GRID ─────────────────────────────────────────────────────────────── -->
-<div class="job-grid" id="js-grid">
-  <div class="empty-state" id="js-empty"><p>No roles match your current filters.</p></div>
+<!-- ── BOARD LAYOUT ─────────────────────────────────────────────────────────── -->
+<div class="board-layout">
+  <aside class="applied-sidebar" id="js-applied-sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">Applied</span>
+      <span class="sidebar-count" id="js-sidebar-count">0</span>
+    </div>
+    <div class="sidebar-list" id="js-sidebar-list">
+      <p class="sidebar-empty">Mark jobs applied to track them here.</p>
+    </div>
+  </aside>
+  <div class="board-main">
+    <div class="job-grid" id="js-grid">
+      <div class="empty-state" id="js-empty"><p>No roles match your current filters.</p></div>
+    </div>
+  </div>
 </div>
 
 <!-- ── TOAST ────────────────────────────────────────────────────────────────── -->
@@ -3468,7 +3633,7 @@ function showToast() {
 /* ═══════════════════════════════════════════════════════════════════════════
    APPLIED TRACKING
 ═══════════════════════════════════════════════════════════════════════════ */
-const APPLIED_KEY = 'jb_applied_ids';
+const APPLIED_KEY = 'jb_applied_v2';
 
 function loadAppliedFromStorage() {
   try {
@@ -3491,14 +3656,13 @@ function markApplied(id) {
   job.status = 'Applied';
   saveAppliedToStorage();
   updateStats();
-  const btn = document.getElementById(`applied-btn-${id}`);
-  if (btn) {
-    btn.className = 'btn-undo';
-    btn.textContent = '↩ Undo Applied';
-    btn.onclick = () => undoApplied(id);
-  }
+  // Animate card out then remove from DOM
   const card = document.querySelector(`.job-card[data-id="${id}"]`);
-  if (card) card.dataset.status = 'Applied';
+  if (card) {
+    card.classList.add('is-removing');
+    setTimeout(() => card.remove(), 300);
+  }
+  addToSidebar(job);
 }
 
 function undoApplied(id) {
@@ -3507,14 +3671,43 @@ function undoApplied(id) {
   job.status = 'To Apply';
   saveAppliedToStorage();
   updateStats();
-  const btn = document.getElementById(`applied-btn-${id}`);
-  if (btn) {
-    btn.className = 'btn-mark-applied';
-    btn.textContent = '✓ Mark Applied';
-    btn.onclick = () => markApplied(id);
+  // Remove from sidebar
+  const item = document.getElementById(`sidebar-item-${id}`);
+  if (item) item.remove();
+  // Hide sidebar if empty
+  const list = document.getElementById('js-sidebar-list');
+  if (!list.querySelector('.sidebar-item')) {
+    list.innerHTML = '<p class="sidebar-empty">Mark jobs applied to track them here.</p>';
+    document.getElementById('js-applied-sidebar').classList.remove('has-items');
+    document.getElementById('js-sidebar-count').textContent = '0';
   }
-  const card = document.querySelector(`.job-card[data-id="${id}"]`);
-  if (card) card.dataset.status = 'To Apply';
+  // Re-render grid so card comes back
+  refresh();
+}
+
+function addToSidebar(job) {
+  const sidebar = document.getElementById('js-applied-sidebar');
+  const list = document.getElementById('js-sidebar-list');
+  // Remove empty placeholder
+  const empty = list.querySelector('.sidebar-empty');
+  if (empty) empty.remove();
+  // Add item
+  const item = document.createElement('div');
+  item.className = 'sidebar-item';
+  item.id = `sidebar-item-${job.id}`;
+  item.innerHTML = `
+    <div class="sidebar-logo">${job.logo}</div>
+    <div class="sidebar-info">
+      <div class="sidebar-co">${job.company}</div>
+      <div class="sidebar-role">${job.role}</div>
+    </div>
+    <button class="sidebar-undo" onclick="undoApplied(${job.id})" title="Undo">↩</button>
+  `;
+  list.appendChild(item);
+  sidebar.classList.add('has-items');
+  // Update sidebar count
+  const count = list.querySelectorAll('.sidebar-item').length;
+  document.getElementById('js-sidebar-count').textContent = count;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -3522,6 +3715,8 @@ function undoApplied(id) {
 ═══════════════════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
   loadAppliedFromStorage();
+  // Rebuild sidebar from persisted applied jobs
+  JOBS.filter(j => j.status === 'Applied').forEach(j => addToSidebar(j));
   // Date
   const d = new Date();
   document.getElementById('js-date').textContent =
