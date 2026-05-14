@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths: [job_board.html]
+  workflow_dispatch:
 
 jobs:
   send-email:
