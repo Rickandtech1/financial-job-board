@@ -3427,10 +3427,26 @@ function updateStats() {
    RENDER
 ═══════════════════════════════════════════════════════════════════════════ */
 const COMPANY_PALETTE = [
-  '#5BA8D9','#6BA88A','#C47A28','#A87CC8','#D97B5B',
-  '#5BB8C8','#C8A84B','#B85B8A','#7CB88A','#5B78D9',
-  '#D95B7B','#8AB85B','#D98B5B','#5BD9B8','#9B8BD9',
-  '#D9A45B','#5B9BD9','#A8C86B','#C86B8A','#6BC8B8'
+  '#E05A5A',  // coral red
+  '#E07828',  // burnt orange
+  '#D4A820',  // amber gold
+  '#B8C830',  // chartreuse
+  '#48C85A',  // green
+  '#28B89A',  // teal
+  '#28A8C8',  // cyan
+  '#3880E0',  // blue
+  '#5858E0',  // indigo
+  '#8848D0',  // purple
+  '#C038A8',  // violet
+  '#E03878',  // hot pink
+  '#E87050',  // terra cotta
+  '#50C890',  // mint
+  '#50A8E8',  // sky blue
+  '#9870E0',  // lavender
+  '#E0A040',  // caramel
+  '#60B040',  // lime
+  '#3898B0',  // teal blue
+  '#D06070',  // rose
 ];
 const _companyColorMap = (() => {
   const map = {};
@@ -3438,6 +3454,9 @@ const _companyColorMap = (() => {
   JOBS.forEach(j => { if (!map[j.company]) map[j.company] = COMPANY_PALETTE[i++ % COMPANY_PALETTE.length]; });
   return map;
 })();
+function _hexRgb(h) {
+  return `${parseInt(h.slice(1,3),16)},${parseInt(h.slice(3,5),16)},${parseInt(h.slice(5,7),16)}`;
+}
 
 function renderCard(job, idx) {
   const sc  = scoreClass(job.fitScore);
@@ -3458,7 +3477,7 @@ function renderCard(job, idx) {
        data-co="${job.company.toLowerCase()}"
        data-role="${job.role.toLowerCase()}"
        data-signals="${job.signals.join(' ').toLowerCase()}"
-       style="animation-delay:${idx * 0.055}s; border-left: 4px solid ${_companyColorMap[job.company] || '#888'}">
+       style="animation-delay:${idx * 0.055}s; background: linear-gradient(135deg, rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0.28) 0%, #0C1D32 58%); border-left: 4px solid rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0.85)">
     ${dbBanner}
     <div class="card-body">
       <div class="card-top">
