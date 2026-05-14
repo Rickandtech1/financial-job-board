@@ -3426,6 +3426,19 @@ function updateStats() {
 /* ═══════════════════════════════════════════════════════════════════════════
    RENDER
 ═══════════════════════════════════════════════════════════════════════════ */
+const COMPANY_PALETTE = [
+  '#5BA8D9','#6BA88A','#C47A28','#A87CC8','#D97B5B',
+  '#5BB8C8','#C8A84B','#B85B8A','#7CB88A','#5B78D9',
+  '#D95B7B','#8AB85B','#D98B5B','#5BD9B8','#9B8BD9',
+  '#D9A45B','#5B9BD9','#A8C86B','#C86B8A','#6BC8B8'
+];
+const _companyColorMap = (() => {
+  const map = {};
+  let i = 0;
+  JOBS.forEach(j => { if (!map[j.company]) map[j.company] = COMPANY_PALETTE[i++ % COMPANY_PALETTE.length]; });
+  return map;
+})();
+
 function renderCard(job, idx) {
   const sc  = scoreClass(job.fitScore);
   const ac  = arrClass(job.arrangement);
@@ -3445,7 +3458,7 @@ function renderCard(job, idx) {
        data-co="${job.company.toLowerCase()}"
        data-role="${job.role.toLowerCase()}"
        data-signals="${job.signals.join(' ').toLowerCase()}"
-       style="animation-delay:${idx * 0.055}s">
+       style="animation-delay:${idx * 0.055}s; border-left: 4px solid ${_companyColorMap[job.company] || '#888'}">
     ${dbBanner}
     <div class="card-body">
       <div class="card-top">
