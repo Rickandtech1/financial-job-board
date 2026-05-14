@@ -3477,7 +3477,7 @@ function renderCard(job, idx) {
        data-co="${job.company.toLowerCase()}"
        data-role="${job.role.toLowerCase()}"
        data-signals="${job.signals.join(' ').toLowerCase()}"
-       style="animation-delay:${idx * 0.055}s; background: linear-gradient(135deg, rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0.28) 0%, #0C1D32 58%); border-left: 4px solid rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0.85)">
+       style="animation-delay:${idx * 0.055}s; background: linear-gradient(160deg, rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0.65) 0%, rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0.30) 100%); border-left: 4px solid rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},1)">
     ${dbBanner}
     <div class="card-body">
       <div class="card-top">
