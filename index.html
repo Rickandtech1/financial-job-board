@@ -3491,7 +3491,14 @@ function markApplied(id) {
   job.status = 'Applied';
   saveAppliedToStorage();
   updateStats();
-  refresh();
+  const btn = document.getElementById(`applied-btn-${id}`);
+  if (btn) {
+    btn.className = 'btn-undo';
+    btn.textContent = '↩ Undo Applied';
+    btn.onclick = () => undoApplied(id);
+  }
+  const card = document.querySelector(`.job-card[data-id="${id}"]`);
+  if (card) card.dataset.status = 'Applied';
 }
 
 function undoApplied(id) {
@@ -3500,7 +3507,14 @@ function undoApplied(id) {
   job.status = 'To Apply';
   saveAppliedToStorage();
   updateStats();
-  refresh();
+  const btn = document.getElementById(`applied-btn-${id}`);
+  if (btn) {
+    btn.className = 'btn-mark-applied';
+    btn.textContent = '✓ Mark Applied';
+    btn.onclick = () => markApplied(id);
+  }
+  const card = document.querySelector(`.job-card[data-id="${id}"]`);
+  if (card) card.dataset.status = 'To Apply';
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
