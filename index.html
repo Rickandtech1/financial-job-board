@@ -3427,26 +3427,26 @@ function updateStats() {
    RENDER
 ═══════════════════════════════════════════════════════════════════════════ */
 const COMPANY_PALETTE = [
-  '#E05A5A',  // coral red
-  '#E07828',  // burnt orange
-  '#D4A820',  // amber gold
-  '#B8C830',  // chartreuse
-  '#48C85A',  // green
-  '#28B89A',  // teal
-  '#28A8C8',  // cyan
-  '#3880E0',  // blue
-  '#5858E0',  // indigo
-  '#8848D0',  // purple
-  '#C038A8',  // violet
-  '#E03878',  // hot pink
-  '#E87050',  // terra cotta
-  '#50C890',  // mint
-  '#50A8E8',  // sky blue
-  '#9870E0',  // lavender
-  '#E0A040',  // caramel
-  '#60B040',  // lime
-  '#3898B0',  // teal blue
-  '#D06070',  // rose
+  '#5C1A1A',  // deep red
+  '#6B3010',  // deep burnt orange
+  '#5A4010',  // deep amber
+  '#2E4A0E',  // deep olive green
+  '#0E4A2A',  // deep emerald
+  '#0A4038',  // deep teal
+  '#0A3848',  // deep cyan
+  '#122860',  // deep navy blue
+  '#1C1C60',  // deep indigo
+  '#321560',  // deep purple
+  '#501040',  // deep violet
+  '#601030',  // deep crimson pink
+  '#502218',  // deep terra cotta
+  '#0E4030',  // deep mint
+  '#0E3050',  // deep sky blue
+  '#281850',  // deep lavender
+  '#503010',  // deep caramel
+  '#1E4010',  // deep lime
+  '#0A2C3A',  // deep teal blue
+  '#481828',  // deep rose
 ];
 const _companyColorMap = (() => {
   const map = {};
@@ -3477,7 +3477,7 @@ function renderCard(job, idx) {
        data-co="${job.company.toLowerCase()}"
        data-role="${job.role.toLowerCase()}"
        data-signals="${job.signals.join(' ').toLowerCase()}"
-       style="animation-delay:${idx * 0.055}s; background: linear-gradient(160deg, rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0.65) 0%, rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0.30) 100%); border-left: 4px solid rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},1)">
+       style="animation-delay:${idx * 0.055}s; background: ${_companyColorMap[job.company]||'#8888AA'}; border-left: 4px solid rgba(0,0,0,0.25)">
     ${dbBanner}
     <div class="card-body">
       <div class="card-top">
