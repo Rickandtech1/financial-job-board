@@ -1109,7 +1109,7 @@ const JOBS = [
     employment: "Full-Time",
     fitScore: 91,
     daysAgo: 3,
-    status: "Applied",
+    status: "To Apply",
     dealbreaker: false,
     signals: [
       "CSC required within 6 months of hire",
@@ -1229,7 +1229,7 @@ const JOBS = [
     employment: "Full-Time",
     fitScore: 84,
     daysAgo: 7,
-    status: "Applied",
+    status: "To Apply",
     dealbreaker: false,
     signals: [
       "CSC required within 180 days of hire",
@@ -3245,7 +3245,8 @@ PLEASE DELIVER ALL OF THE FOLLOWING:
 ═══════════════════════════════════════════════════════════════════════════ */
 function updateStats() {
   const total      = JOBS.length;
-  const applied    = JOBS.filter(j => j.status === 'Applied').length;
+  const appliedIds = (() => { try { return JSON.parse(localStorage.getItem(APPLIED_KEY) || '[]'); } catch(e) { return []; } })();
+  const applied    = appliedIds.length;
   const interviews = JOBS.filter(j => j.status === 'Interview').length;
   const clean      = JOBS.filter(j => !j.dealbreaker);
   const top        = clean.reduce((a, b) => b.fitScore > a.fitScore ? b : a, clean[0]);
@@ -3320,7 +3321,6 @@ function renderCard(job, idx) {
       </div>
     </div>
     <div class="card-footer">
-      <span class="status-badge ${stc}">${job.status}</span>
       <div class="footer-actions">
         <button class="btn-pos" id="pos-btn-${job.id}" onclick="togglePanel(${job.id})">Why I Fit ↓</button>
         ${job.status === 'To Apply'
