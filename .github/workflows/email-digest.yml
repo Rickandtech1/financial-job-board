@@ -12,106 +12,96 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Parse new jobs and send email
+      - name: Extract new jobs as JSON
+        id: extract
+        run: |
+          node - <<'EOF' > /tmp/new_jobs.json
+          const fs = require('fs');
+          const html = fs.readFileSync('job_board.html', 'utf8');
+          const match = html.match(/const JOBS\s*=\s*(\[[\s\S]*?\]);/);
+          if (!match) { console.log('[]'); process.exit(0); }
+          const JOBS = eval(match[1]);
+          const newJobs = JOBS.filter(j => j.daysAgo === 0);
+          console.log(JSON.stringify({ new: newJobs, total: JOBS.length }));
+          EOF
+
+      - name: Send email via Resend
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
         run: |
           python3 - <<'PYEOF'
-          import json, re, subprocess, tempfile, os, sys
+          import json, subprocess, os
           from datetime import date
 
-          html = open("job_board.html").read()
-          match = re.search(r'const JOBS\s*=\s*(\[.*?\]);', html, re.DOTALL)
-          if not match:
-              print("Could not find JOBS array"); sys.exit(0)
-
-          jobs_raw = match.group(1)
-          # Convert JS object literals to JSON
-          jobs_raw = re.sub(r'//[^\n]*', '', jobs_raw)          # strip comments
-          jobs_raw = re.sub(r',\s*\]', ']', jobs_raw)           # trailing commas
-          jobs_raw = re.sub(r"(\w+):", r'"\1":', jobs_raw)      # quote keys
-          jobs_raw = re.sub(r"'([^']*)'", r'"\1"', jobs_raw)    # single → double quotes
-          jobs_raw = re.sub(r'""(\w+)"":', r'"\1":', jobs_raw)  # fix double-quoted keys
-
-          try:
-              jobs = json.loads(jobs_raw)
-          except Exception as e:
-              print(f"JSON parse error: {e}"); sys.exit(0)
-
-          new_jobs = [j for j in jobs if j.get('daysAgo', 99) == 0]
+          data = json.load(open('/tmp/new_jobs.json'))
+          new_jobs = data['new']
+          total = data['total']
           today = date.today().strftime('%Y-%m-%d')
 
-          SCORE_COLOR = lambda s: ('#B8860B' if s >= 85 else '#2e7d4f' if s >= 70 else '#b45309' if s >= 50 else '#b91c1c')
+          def score_color(s):
+              return '#B8860B' if s >= 85 else '#2e7d4f' if s >= 70 else '#b45309' if s >= 50 else '#b91c1c'
 
           if new_jobs:
               new_jobs.sort(key=lambda j: (j.get('dealbreaker', False), -j.get('fitScore', 0)))
               cards = []
               for j in new_jobs:
                   sc = j.get('fitScore', 0)
-                  color = SCORE_COLOR(sc)
-                  db_warn = '<p style="color:#b91c1c;font-weight:bold">⛔ DEALBREAKER</p>' if j.get('dealbreaker') else ''
-                  cards.append(f"""
-          <div style="margin-bottom:28px;padding-bottom:28px;border-bottom:1px solid #e5e7eb">
-            <h2 style="margin:0 0 4px">{j.get('company','')}</h2>
-            <p style="margin:0 0 8px;font-size:18px;font-weight:600">{j.get('role','')}</p>
-            <span style="background:{color};color:#fff;padding:3px 10px;border-radius:12px;font-size:13px;font-weight:700">
-              Fit Score: {sc}
-            </span>
-            {db_warn}
-            <p style="margin:10px 0 4px">
-              <strong>{j.get('employment','Full-Time')}</strong> &nbsp;·&nbsp;
-              {j.get('location','')} &nbsp;·&nbsp; {j.get('arrangement','')} &nbsp;·&nbsp; {j.get('salary','Not listed')}
-            </p>
-            <p style="margin:4px 0">
-              <a href="{j.get('url','#')}">{j.get('source','')}</a>
-            </p>
-            <p style="margin:10px 0 4px">{j.get('whyFit','')}</p>
-            <p style="margin:4px 0;font-style:italic;color:#6b7280">{j.get('hook','')}</p>
-          </div>""")
-
-              body = f"""
-          <div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111">
-            <h1 style="color:#1e3a5f">Job Board Update — {today}</h1>
-            <p>{len(new_jobs)} new role{'s' if len(new_jobs)!=1 else ''} found today</p>
-            {''.join(cards)}
-            <p style="color:#6b7280;font-size:13px">
-              <a href="https://rickandtech1.github.io/financial-job-board/">View full board</a>
-            </p>
-          </div>"""
-              subject = f"Job Board Update — {today}: {len(new_jobs)} new role{'s' if len(new_jobs)!=1 else ''} found"
+                  db = '<p style="color:#b91c1c;font-weight:bold">⛔ DEALBREAKER</p>' if j.get('dealbreaker') else ''
+                  cards.append(
+                      f'<div style="margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid #e5e7eb">'
+                      f'<h2 style="margin:0 0 2px">{j.get("company","")}</h2>'
+                      f'<p style="margin:0 0 8px;font-size:17px;font-weight:600">{j.get("role","")}</p>'
+                      f'<span style="background:{score_color(sc)};color:#fff;padding:2px 10px;border-radius:12px;font-size:13px;font-weight:700">Score: {sc}</span>'
+                      f'{db}'
+                      f'<p style="margin:10px 0 4px"><strong>{j.get("employment","Full-Time")}</strong> &nbsp;&middot;&nbsp; '
+                      f'{j.get("location","")} &nbsp;&middot;&nbsp; {j.get("arrangement","")} &nbsp;&middot;&nbsp; {j.get("salary","Not listed")}</p>'
+                      f'<p style="margin:4px 0"><a href="{j.get("url","#")}">{j.get("source","")}</a></p>'
+                      f'<p style="margin:10px 0 4px">{j.get("whyFit","")}</p>'
+                      f'<p style="margin:4px 0;font-style:italic;color:#6b7280">{j.get("hook","")}</p>'
+                      f'</div>'
+                  )
+              html_body = (
+                  '<div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111">'
+                  f'<h1 style="color:#1e3a5f">Job Board Update &mdash; {today}</h1>'
+                  f'<p>{len(new_jobs)} new role{"s" if len(new_jobs)!=1 else ""} found today</p>'
+                  + ''.join(cards) +
+                  f'<p style="color:#6b7280;font-size:13px"><a href="https://rickandtech1.github.io/financial-job-board/">View full board</a></p>'
+                  '</div>'
+              )
+              subject = f'Job Board Update — {today}: {len(new_jobs)} new role{"s" if len(new_jobs)!=1 else ""} found'
           else:
-              body = f"""
-          <div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111">
-            <h1 style="color:#1e3a5f">Job Board — {today}</h1>
-            <p>Sarik, no new roles matched your criteria today.</p>
-            <p>Sources checked: LinkedIn, Indeed, Glassdoor, ZipRecruiter, Big 5 banks, 9 Metro Vancouver credit unions.</p>
-            <p>Total roles on your board: {len(jobs)}</p>
-            <p><a href="https://rickandtech1.github.io/financial-job-board/">View your board</a></p>
-          </div>"""
-              subject = f"Job Board — {today}: No new roles today"
+              html_body = (
+                  '<div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111">'
+                  f'<h1 style="color:#1e3a5f">Job Board &mdash; {today}</h1>'
+                  '<p>Sarik, no new roles matched your criteria today.</p>'
+                  '<p>Sources checked: LinkedIn, Indeed, Glassdoor, ZipRecruiter, Big 5 banks, 9 Metro Vancouver credit unions.</p>'
+                  f'<p>Total roles on your board: {total}</p>'
+                  '<p><a href="https://rickandtech1.github.io/financial-job-board/">View your board</a></p>'
+                  '</div>'
+              )
+              subject = f'Job Board — {today}: No new roles today'
 
           payload = {
-              "from": "Job Board <onboarding@resend.dev>",
-              "to": ["ricktey02@gmail.com"],
-              "subject": subject,
-              "html": body
+              'from': 'Job Board <onboarding@resend.dev>',
+              'to': ['ricktey02@gmail.com'],
+              'subject': subject,
+              'html': html_body
           }
 
-          tmp = tempfile.mktemp(suffix='.json')
-          with open(tmp, 'w') as f:
+          with open('/tmp/resend_payload.json', 'w') as f:
               json.dump(payload, f)
 
           result = subprocess.run([
-              "curl", "-s", "-X", "POST", "https://api.resend.com/emails",
-              "-H", f"Authorization: Bearer {os.environ['RESEND_API_KEY']}",
-              "-H", "Content-Type: application/json",
-              "--data-binary", f"@{tmp}"
+              'curl', '-s', '-X', 'POST', 'https://api.resend.com/emails',
+              '-H', f'Authorization: Bearer {os.environ["RESEND_API_KEY"]}',
+              '-H', 'Content-Type: application/json',
+              '--data-binary', '@/tmp/resend_payload.json'
           ], capture_output=True, text=True)
 
-          print("Resend response:", result.stdout)
+          print('Resend response:', result.stdout)
           if '"id"' in result.stdout:
-              print("Email sent successfully!")
+              print('Email sent successfully!')
           else:
-              print("ERROR sending email:", result.stderr)
-              sys.exit(1)
+              print('ERROR:', result.stderr)
+              exit(1)
           PYEOF
