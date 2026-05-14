@@ -716,6 +716,9 @@
       cursor: pointer;
       transition: all 0.15s;
       white-space: nowrap;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
     }
 
     .btn-apply:hover {
@@ -724,23 +727,25 @@
       color: var(--gold);
     }
 
-    .btn-apply.copied {
-      border-color: rgba(31,144,106,0.5);
-      background: rgba(31,144,106,0.12);
-      color: var(--green-lt);
+    .btn-apply-none {
+      opacity: 0.35;
+      cursor: default;
+      pointer-events: none;
     }
 
     .btn-mark-applied {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 0.4rem;
-      padding: 0.38rem 0.75rem;
-      border-radius: 4px;
+      padding: 0.35rem 0.85rem;
+      border-radius: 3px;
       border: 1px solid rgba(31,144,106,0.35);
       background: transparent;
-      font-size: 0.72rem;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.65rem;
       font-weight: 600;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
       color: var(--green-lt);
       cursor: pointer;
       transition: all 0.15s;
@@ -752,11 +757,52 @@
       border-color: var(--green-lt);
     }
 
-    .btn-mark-applied.is-applied {
-      border-color: rgba(31,144,106,0.2);
-      color: rgba(31,144,106,0.5);
-      cursor: default;
+    .btn-undo {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 3px;
+      border: 1px solid rgba(196,122,40,0.3);
+      background: transparent;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--amber-lt);
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
     }
+
+    .btn-undo:hover {
+      background: rgba(196,122,40,0.12);
+      border-color: var(--amber-lt);
+    }
+
+    .btn-copy-prompt {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      background: transparent;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--cream-dim);
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+      margin-top: 0.75rem;
+    }
+
+    .btn-copy-prompt:hover { border-color: var(--gold-dk); color: var(--gold-lt); }
+    .btn-copy-prompt.copied { border-color: rgba(31,144,106,0.5); color: var(--green-lt); }
 
     /* ── Positioning Panel ──────────────────────────────────────────────── */
     .pos-panel {
@@ -3276,9 +3322,15 @@ function renderCard(job, idx) {
     <div class="card-footer">
       <span class="status-badge ${stc}">${job.status}</span>
       <div class="footer-actions">
-        ${job.status === 'To Apply' ? `<button class="btn-mark-applied" id="applied-btn-${job.id}" onclick="markApplied(${job.id})">✓ Mark Applied</button>` : ''}
-        <button class="btn-pos" id="pos-btn-${job.id}" onclick="togglePanel(${job.id})">Positioning</button>
-        <button class="btn-apply" id="apply-btn-${job.id}" onclick="copyPrompt(${job.id})">Apply Now →</button>
+        <button class="btn-pos" id="pos-btn-${job.id}" onclick="togglePanel(${job.id})">Why I Fit ↓</button>
+        ${job.status === 'To Apply'
+          ? `<button class="btn-mark-applied" id="applied-btn-${job.id}" onclick="markApplied(${job.id})">✓ Mark Applied</button>`
+          : job.status === 'Applied'
+          ? `<button class="btn-undo" id="applied-btn-${job.id}" onclick="undoApplied(${job.id})">↩ Undo Applied</button>`
+          : ''}
+        ${job.url
+          ? `<a class="btn-apply" href="${job.url}" target="_blank" rel="noopener">Apply Now →</a>`
+          : `<span class="btn-apply btn-apply-none">No Link</span>`}
       </div>
     </div>
     <div class="pos-panel" id="pos-panel-${job.id}">
@@ -3294,6 +3346,7 @@ function renderCard(job, idx) {
         <div class="hook-box">
           <div class="hook-label">Recommended Hook for Outreach &amp; Screening</div>
           <div class="hook-text">${job.hook}</div>
+          <button class="btn-copy-prompt" id="copy-btn-${job.id}" onclick="copyPrompt(${job.id})">📋 Copy AI Application Prompt</button>
         </div>
       </div>
     </div>
@@ -3371,7 +3424,7 @@ function togglePanel(id) {
   if (!panel) return;
   panel.classList.toggle('open');
   btn.classList.toggle('open');
-  btn.textContent = panel.classList.contains('open') ? 'Hide ↑' : 'Positioning';
+  btn.textContent = panel.classList.contains('open') ? 'Why I Fit ↑' : 'Why I Fit ↓';
 }
 
 function copyPrompt(id) {
@@ -3379,13 +3432,13 @@ function copyPrompt(id) {
   if (!job) return;
 
   const text = buildPrompt(job);
-  const btn  = document.getElementById(`apply-btn-${id}`);
+  const btn  = document.getElementById(`copy-btn-${id}`);
 
   const markCopied = () => {
     if (btn) { btn.textContent = '✓ Copied!'; btn.classList.add('copied'); }
     showToast();
     setTimeout(() => {
-      if (btn) { btn.textContent = 'Apply Now →'; btn.classList.remove('copied'); }
+      if (btn) { btn.textContent = '📋 Copy AI Application Prompt'; btn.classList.remove('copied'); }
     }, 2500);
   };
 
@@ -3436,6 +3489,15 @@ function markApplied(id) {
   const job = JOBS.find(j => j.id === id);
   if (!job || job.status === 'Applied') return;
   job.status = 'Applied';
+  saveAppliedToStorage();
+  updateStats();
+  refresh();
+}
+
+function undoApplied(id) {
+  const job = JOBS.find(j => j.id === id);
+  if (!job || job.status !== 'Applied') return;
+  job.status = 'To Apply';
   saveAppliedToStorage();
   updateStats();
   refresh();
