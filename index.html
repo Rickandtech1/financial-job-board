@@ -3759,14 +3759,11 @@ function getFiltered() {
       const bApplied = b.status === 'Applied' ? 1 : 0;
       if (aApplied !== bApplied) return aApplied - bApplied;
     }
-    // Always group same company together
-    const co = a.company.localeCompare(b.company);
-    if (co !== 0) return co;
-    // Within same company, apply selected sort
-    if (sort === 'fit')    return b.fitScore - a.fitScore;
-    if (sort === 'date')   return a.daysAgo  - b.daysAgo;
-    if (sort === 'salary') return parseSalary(b.salary) - parseSalary(a.salary);
-    return b.fitScore - a.fitScore;
+    if (sort === 'company') return a.company.localeCompare(b.company) || b.fitScore - a.fitScore;
+    if (sort === 'date')    return a.daysAgo - b.daysAgo || b.fitScore - a.fitScore;
+    if (sort === 'salary')  return parseSalary(b.salary) - parseSalary(a.salary) || b.fitScore - a.fitScore;
+    // Default (fit): highest fit score first, then newest posting
+    return b.fitScore - a.fitScore || a.daysAgo - b.daysAgo;
   });
 
   return list;
