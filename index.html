@@ -1096,6 +1096,14 @@
       pointer-events: none;
     }
 
+    @keyframes coPulse {
+      0%, 100% { box-shadow: 0 0 0 0 transparent; }
+      50%       { box-shadow: 0 0 0 2px rgba(var(--co-rgb),0.8), 0 0 18px 4px rgba(var(--co-rgb),0.30); }
+    }
+    .job-card.co-sibling {
+      animation: coPulse 1.1s ease-in-out infinite !important;
+    }
+
     .board-main {
       flex: 1;
       min-width: 0;
@@ -3477,7 +3485,8 @@ function renderCard(job, idx) {
        data-co="${job.company.toLowerCase()}"
        data-role="${job.role.toLowerCase()}"
        data-signals="${job.signals.join(' ').toLowerCase()}"
-       style="animation-delay:${idx * 0.055}s; background: linear-gradient(135deg, rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0.28) 0%, #0C1D32 58%); border-left: 4px solid ${_companyColorMap[job.company]||'#8888AA'}">
+       onmouseenter="hlCo(this)" onmouseleave="unhlCo()"
+       style="--co-rgb:${_hexRgb(_companyColorMap[job.company]||'#8888AA')};animation-delay:${idx * 0.055}s;background:linear-gradient(to right,rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0.45) 0%,rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0.10) 30%,transparent 55%);border-left:4px solid ${_companyColorMap[job.company]||'#8888AA'}">
     ${dbBanner}
     <div class="card-body">
       <div class="card-top">
@@ -3600,17 +3609,30 @@ function getFiltered() {
       const bApplied = b.status === 'Applied' ? 1 : 0;
       if (aApplied !== bApplied) return aApplied - bApplied;
     }
-    if (sort === 'fit')     return b.fitScore - a.fitScore;
-    if (sort === 'date')    return a.daysAgo  - b.daysAgo;
-    if (sort === 'company') return a.company.localeCompare(b.company);
-    if (sort === 'salary')  return parseSalary(b.salary) - parseSalary(a.salary);
-    return 0;
+    // Always group same company together
+    const co = a.company.localeCompare(b.company);
+    if (co !== 0) return co;
+    // Within same company, apply selected sort
+    if (sort === 'fit')    return b.fitScore - a.fitScore;
+    if (sort === 'date')   return a.daysAgo  - b.daysAgo;
+    if (sort === 'salary') return parseSalary(b.salary) - parseSalary(a.salary);
+    return b.fitScore - a.fitScore;
   });
 
   return list;
 }
 
 function refresh() { renderGrid(getFiltered()); }
+
+function hlCo(card) {
+  const co = card.dataset.co;
+  document.querySelectorAll(`.job-card[data-co="${co}"]`).forEach(c => {
+    if (c !== card) c.classList.add('co-sibling');
+  });
+}
+function unhlCo() {
+  document.querySelectorAll('.job-card.co-sibling').forEach(c => c.classList.remove('co-sibling'));
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    INTERACTIONS
