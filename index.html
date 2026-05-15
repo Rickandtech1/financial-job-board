@@ -3763,9 +3763,9 @@ function renderCard(job, idx) {
       <div class="footer-actions">
         <button class="btn-pos" id="pos-btn-${job.id}" onclick="togglePanel(${job.id})">Why I Fit ↓</button>
         ${job.status === 'To Apply'
-          ? `<button class="btn-mark-applied" id="applied-btn-${job.id}" onclick="markApplied(${job.id}, this)">✓ Mark Applied</button>`
-          : job.status === 'Applied'
-          ? `<button class="btn-undo" id="applied-btn-${job.id}" onclick="undoApplied(${job.id})">↩ Undo Applied</button>`
+          ? `<button class="btn-mark-applied" id="applied-btn-${job.id}" onclick="markApplied(${job.id}, this)">Apply</button>`
+          : (job.status === 'Applied' || job.status === 'Interview' || job.status === 'Offer')
+          ? `<button class="btn-mark-applied" id="applied-btn-${job.id}" disabled style="opacity:0.45;cursor:default">✓ Applied</button>`
           : ''}
         ${job.url
           ? `<a class="btn-apply" href="${job.url}" target="_blank" rel="noopener">Apply Now →</a>`
