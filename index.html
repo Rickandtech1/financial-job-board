@@ -3844,8 +3844,8 @@ function getFiltered() {
     if (sort === 'company') return a.company.localeCompare(b.company) || b.fitScore - a.fitScore;
     if (sort === 'date')    return a.daysAgo - b.daysAgo || b.fitScore - a.fitScore;
     if (sort === 'salary')  return parseSalary(b.salary) - parseSalary(a.salary) || b.fitScore - a.fitScore;
-    // Default (fit): newest posting first, fit score as tiebreaker
-    return a.daysAgo - b.daysAgo || b.fitScore - a.fitScore;
+    // Default (fit): highest fit score first, newest posting as tiebreaker
+    return b.fitScore - a.fitScore || a.daysAgo - b.daysAgo;
   });
 
   return list;
