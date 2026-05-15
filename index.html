@@ -3857,9 +3857,6 @@ function markApplied(id, btn) {
   const job = JOBS.find(j => j.id === id) || JOBS.find(j => j.id == id);
   if (!job) return;
 
-  // Guard against double-fire (inline onclick + event delegation both present)
-  if (job.status === 'Applied') return;
-
   // Immediate button feedback
   if (btn) { btn.textContent = '✓ Applied!'; btn.disabled = true; }
 
@@ -3927,57 +3924,44 @@ function addToSidebar(job) {
    INIT
 ═══════════════════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
-  localStorage.removeItem(APPLIED_KEY); // clear stale applied state on each load
-  loadAppliedFromStorage();
-  // Rebuild sidebar from persisted applied jobs
-  JOBS.filter(j => j.status === 'Applied').forEach(j => addToSidebar(j));
-  // Date
-  const d = new Date();
-  document.getElementById('js-date').textContent =
-    d.toLocaleDateString('en-CA', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  try {
+    localStorage.removeItem(APPLIED_KEY); // nuke stale applied state on every load
+    loadAppliedFromStorage();
+    // Rebuild sidebar from persisted applied jobs
+    JOBS.filter(j => j.status === 'Applied').forEach(j => addToSidebar(j));
+    // Date
+    const d = new Date();
+    document.getElementById('js-date').textContent =
+      d.toLocaleDateString('en-CA', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
 
-  // Status filter buttons
-  document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      refresh();
+    // Status filter buttons
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        refresh();
+      });
     });
-  });
 
-  document.getElementById('js-search').addEventListener('input', refresh);
-  document.getElementById('js-fit-toggle').addEventListener('change', refresh);
-  document.getElementById('js-sort').addEventListener('change', refresh);
+    document.getElementById('js-search').addEventListener('input', refresh);
+    document.getElementById('js-fit-toggle').addEventListener('change', refresh);
+    document.getElementById('js-sort').addEventListener('change', refresh);
 
-  // Event delegation for card buttons — belt-and-suspenders safety net.
-  // btn-mark-applied and btn-undo have inline onclick handlers AND are covered here.
-  // Both markApplied and undoApplied are idempotent (guard against double-fire).
-  // btn-pos is excluded here to prevent double-firing togglePanel (it has inline onclick
-  // and does not need the card's data-id via delegation).
-  document.getElementById('js-grid').addEventListener('click', function(e) {
-    const btn = e.target.closest('button');
-    if (!btn) return;
-    const card = btn.closest('.job-card');
-    if (!card) return;
-    const id = parseInt(card.dataset.id, 10);
-    if (isNaN(id)) return;
-    if (btn.classList.contains('btn-mark-applied')) markApplied(id, btn);
-    if (btn.classList.contains('btn-undo'))         undoApplied(id);
-    // btn-pos intentionally excluded — has inline onclick, double-fire would cancel toggle
-  });
+    // Event delegation for sidebar undo buttons
+    document.getElementById('js-sidebar-list').addEventListener('click', function(e) {
+      const btn = e.target.closest('.sidebar-undo');
+      if (!btn) return;
+      const item = btn.closest('.sidebar-item');
+      if (!item) return;
+      const id = parseInt(item.id.replace('sidebar-item-', ''), 10);
+      undoApplied(id);
+    });
 
-  // Event delegation for sidebar undo buttons
-  document.getElementById('js-sidebar-list').addEventListener('click', function(e) {
-    const btn = e.target.closest('.sidebar-undo');
-    if (!btn) return;
-    const item = btn.closest('.sidebar-item');
-    if (!item) return;
-    const id = parseInt(item.id.replace('sidebar-item-', ''), 10);
-    undoApplied(id);
-  });
-
-  updateStats();
-  refresh();
+    updateStats();
+    refresh();
+  } catch(e) {
+    console.error('DOMContentLoaded setup error:', e);
+  }
 });
 </script>
 </body>
