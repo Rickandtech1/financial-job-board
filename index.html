@@ -3677,7 +3677,7 @@ function renderCard(job, idx) {
       <div class="footer-actions">
         <button class="btn-pos" id="pos-btn-${job.id}" onclick="togglePanel(${job.id})">Why I Fit ↓</button>
         ${job.status === 'To Apply'
-          ? `<button class="btn-mark-applied" id="applied-btn-${job.id}" onclick="markApplied(${job.id})">✓ Mark Applied</button>`
+          ? `<button class="btn-mark-applied" id="applied-btn-${job.id}" onclick="markApplied(${job.id},this)">✓ Mark Applied</button>`
           : job.status === 'Applied'
           ? `<button class="btn-undo" id="applied-btn-${job.id}" onclick="undoApplied(${job.id})">↩ Undo Applied</button>`
           : ''}
@@ -3849,28 +3849,29 @@ function saveAppliedToStorage() {
   localStorage.setItem(APPLIED_KEY, JSON.stringify(ids));
 }
 
-function markApplied(id) {
-  const job = JOBS.find(j => j.id === id);
+function markApplied(id, btn) {
+  // Walk up from button to card — avoids all querySelector/ID-matching issues
+  const card = btn ? btn.closest('.job-card') : document.querySelector(`.job-card[data-id="${id}"]`);
+
+  // Find job — try strict then loose equality as fallback
+  const job = JOBS.find(j => j.id === id) || JOBS.find(j => j.id == id);
   if (!job) return;
 
   // Immediate button feedback
-  const btn = document.getElementById(`applied-btn-${id}`);
   if (btn) { btn.textContent = '✓ Applied!'; btn.disabled = true; }
 
-  // Update state (idempotent — safe to call even if already Applied)
   job.status = 'Applied';
   saveAppliedToStorage();
   updateStats();
 
-  // Add to sidebar only if not already there
-  if (!document.getElementById(`sidebar-item-${id}`)) addToSidebar(job);
+  try {
+    if (!document.getElementById(`sidebar-item-${job.id}`)) addToSidebar(job);
+  } catch(e) {}
 
-  // Always remove card from grid if it's still in the DOM
-  const card = document.querySelector(`.job-card[data-id="${id}"]`);
   if (card) {
     card.style.animationDelay = '0s';
     card.classList.add('is-removing');
-    setTimeout(() => card.remove(), 350);
+    setTimeout(function() { if (card.parentNode) card.parentNode.removeChild(card); }, 350);
   }
 }
 
@@ -3923,6 +3924,7 @@ function addToSidebar(job) {
    INIT
 ═══════════════════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
+  localStorage.removeItem(APPLIED_KEY); // clear stale applied state on each load
   loadAppliedFromStorage();
   // Rebuild sidebar from persisted applied jobs
   JOBS.filter(j => j.status === 'Applied').forEach(j => addToSidebar(j));
