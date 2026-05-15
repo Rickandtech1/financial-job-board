@@ -3677,9 +3677,9 @@ function renderCard(job, idx) {
       <div class="footer-actions">
         <button class="btn-pos" id="pos-btn-${job.id}" onclick="togglePanel(${job.id})">Why I Fit ↓</button>
         ${job.status === 'To Apply'
-          ? `<button class="btn-mark-applied" id="applied-btn-${job.id}">✓ Mark Applied</button>`
+          ? `<button class="btn-mark-applied" id="applied-btn-${job.id}" onclick="markApplied(${job.id}, this)">✓ Mark Applied</button>`
           : job.status === 'Applied'
-          ? `<button class="btn-undo" id="applied-btn-${job.id}">↩ Undo Applied</button>`
+          ? `<button class="btn-undo" id="applied-btn-${job.id}" onclick="undoApplied(${job.id})">↩ Undo Applied</button>`
           : ''}
         ${job.url
           ? `<a class="btn-apply" href="${job.url}" target="_blank" rel="noopener">Apply Now →</a>`
@@ -3857,6 +3857,9 @@ function markApplied(id, btn) {
   const job = JOBS.find(j => j.id === id) || JOBS.find(j => j.id == id);
   if (!job) return;
 
+  // Guard against double-fire (inline onclick + event delegation both present)
+  if (job.status === 'Applied') return;
+
   // Immediate button feedback
   if (btn) { btn.textContent = '✓ Applied!'; btn.disabled = true; }
 
@@ -3946,16 +3949,21 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('js-fit-toggle').addEventListener('change', refresh);
   document.getElementById('js-sort').addEventListener('change', refresh);
 
-  // Event delegation for card buttons — works regardless of inline onclick state
+  // Event delegation for card buttons — belt-and-suspenders safety net.
+  // btn-mark-applied and btn-undo have inline onclick handlers AND are covered here.
+  // Both markApplied and undoApplied are idempotent (guard against double-fire).
+  // btn-pos is excluded here to prevent double-firing togglePanel (it has inline onclick
+  // and does not need the card's data-id via delegation).
   document.getElementById('js-grid').addEventListener('click', function(e) {
     const btn = e.target.closest('button');
     if (!btn) return;
     const card = btn.closest('.job-card');
     if (!card) return;
     const id = parseInt(card.dataset.id, 10);
+    if (isNaN(id)) return;
     if (btn.classList.contains('btn-mark-applied')) markApplied(id, btn);
     if (btn.classList.contains('btn-undo'))         undoApplied(id);
-    if (btn.classList.contains('btn-pos'))          togglePanel(id);
+    // btn-pos intentionally excluded — has inline onclick, double-fire would cancel toggle
   });
 
   // Event delegation for sidebar undo buttons
