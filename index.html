@@ -1015,13 +1015,11 @@
     .sidebar-section-offer .sidebar-section-count { color: #f59e0b; }
     .sidebar-section-offer .sidebar-item { padding-left: 6px; border-left: 2px solid rgba(245,158,11,0.4); }
 
-    .sidebar-item.is-advanceable {
-      cursor: pointer;
-      border-radius: 4px;
-      transition: background 0.15s;
-    }
-    .sidebar-item.is-advanceable:hover {
-      background: rgba(255,255,255,0.05);
+    .sidebar-btns {
+      display: flex;
+      gap: 0.3rem;
+      align-items: center;
+      flex-shrink: 0;
     }
 
     .sidebar-empty {
@@ -1089,7 +1087,7 @@
       margin-top: 1px;
     }
 
-    .sidebar-undo {
+    .sidebar-undo, .sidebar-regress {
       background: transparent;
       border: 1px solid var(--border);
       color: var(--cream-dim);
@@ -1108,6 +1106,57 @@
     .sidebar-undo:hover {
       border-color: var(--gold-dk);
       color: var(--gold-lt);
+    }
+
+    .sidebar-regress:hover {
+      border-color: rgba(45,212,191,0.45);
+      color: #2dd4bf;
+    }
+
+    .sidebar-advance {
+      background: rgba(45,212,191,0.08);
+      border: 1px solid rgba(45,212,191,0.28);
+      color: #2dd4bf;
+      border-radius: 3px;
+      height: 22px;
+      padding: 0 5px;
+      font-size: 0.58rem;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+    }
+
+    .sidebar-advance:hover {
+      background: rgba(45,212,191,0.18);
+      border-color: rgba(45,212,191,0.55);
+    }
+
+    .sidebar-link {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.28);
+      border-radius: 3px;
+      width: 22px;
+      height: 22px;
+      font-size: 0.66rem;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+    }
+
+    .sidebar-link:hover {
+      border-color: rgba(255,255,255,0.28);
+      color: rgba(255,255,255,0.65);
     }
 
     /* ── Card exit animation ─────────────────────────────────────────── */
@@ -3924,17 +3973,33 @@ function addToSidebar(job) {
   const existing = document.getElementById(`sidebar-item-${job.id}`);
   if (existing) existing.remove();
 
+  const linkBtn = job.url
+    ? `<a class="sidebar-link" href="${job.url}" target="_blank" rel="noopener" title="Open listing">🔗</a>`
+    : '';
+
+  let btns = '';
+  if (job.status === 'Applied') {
+    btns = `<button class="sidebar-undo"    title="Undo — move back to To Apply">↩</button>`;
+  } else if (job.status === 'Interview') {
+    btns = `<button class="sidebar-regress" title="Move back to Applied">↩</button>
+            <button class="sidebar-advance" title="Advance to Offer">→ Offer</button>
+            ${linkBtn}`;
+  } else if (job.status === 'Offer') {
+    btns = `<button class="sidebar-regress" title="Move back to Interview">↩</button>
+            ${linkBtn}`;
+  }
+
   const item = document.createElement('div');
-  item.className = 'sidebar-item' + (job.status !== 'Offer' ? ' is-advanceable' : '');
-  item.id        = `sidebar-item-${job.id}`;
+  item.className  = 'sidebar-item';
+  item.id         = `sidebar-item-${job.id}`;
   item.dataset.id = String(job.id);
-  item.innerHTML = `
+  item.innerHTML  = `
     <div class="sidebar-logo">${job.logo}</div>
     <div class="sidebar-info">
       <div class="sidebar-co">${job.company}</div>
       <div class="sidebar-role">${job.role}</div>
     </div>
-    ${job.status === 'Applied' ? '<button class="sidebar-undo" title="Undo applied">↩</button>' : ''}
+    <div class="sidebar-btns">${btns}</div>
   `;
   listEl.appendChild(item);
   updateSidebarVisibility();
@@ -3945,6 +4010,19 @@ function advanceStage(id) {
   if (!job) return;
   if      (job.status === 'Applied')   job.status = 'Interview';
   else if (job.status === 'Interview') job.status = 'Offer';
+  else return;
+
+  savePipelineToStorage();
+  addToSidebar(job);
+  updateStats();
+  refresh();
+}
+
+function regressStage(id) {
+  const job = JOBS.find(j => j != null && j.id === id);
+  if (!job) return;
+  if      (job.status === 'Offer')     job.status = 'Interview';
+  else if (job.status === 'Interview') job.status = 'Applied';
   else return;
 
   savePipelineToStorage();
@@ -4014,17 +4092,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('js-fit-toggle').addEventListener('change', refresh);
     document.getElementById('js-sort').addEventListener('change', refresh);
 
-    // Sidebar: advance stage on item click, undo on ↩ button
+    // Sidebar: button-specific handlers for undo, regress, and advance
     document.getElementById('js-applied-sidebar').addEventListener('click', function(e) {
-      const undoBtn = e.target.closest('.sidebar-undo');
-      if (undoBtn) {
-        const item = undoBtn.closest('.sidebar-item');
-        if (!item) return;
-        undoApplied(parseInt(item.dataset.id, 10));
-        return;
-      }
-      const item = e.target.closest('.sidebar-item.is-advanceable');
-      if (item) advanceStage(parseInt(item.dataset.id, 10));
+      if (e.target.closest('.sidebar-link')) return; // let <a> navigate naturally
+      const item = e.target.closest('.sidebar-item');
+      if (!item) return;
+      const id = parseInt(item.dataset.id, 10);
+      if (isNaN(id)) return;
+      if (e.target.closest('.sidebar-undo'))    { undoApplied(id);  return; }
+      if (e.target.closest('.sidebar-regress')) { regressStage(id); return; }
+      if (e.target.closest('.sidebar-advance')) { advanceStage(id); return; }
     });
 
     updateStats();
