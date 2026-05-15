@@ -16,7 +16,7 @@ RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 TO_EMAIL       = os.environ.get("TO_EMAIL", "ricktey02@gmail.com")
 GITHUB_PAT     = os.environ.get("GITHUB_PAT", "")
 REPO_DIR       = os.environ.get("REPO_DIR", os.path.dirname(os.path.abspath(__file__)))
-JOB_BOARD_PATH = os.path.join(REPO_DIR, "job_board.html")
+JOB_BOARD_PATH = os.path.join(REPO_DIR, "index.html")
 TODAY          = datetime.date.today().isoformat()
 
 # ── Apify helpers ─────────────────────────────────────────────────────────────
@@ -624,6 +624,69 @@ def append_jobs_to_html(html_path: str, new_jobs: list, start_id: int) -> int:
     return added
 
 
+# ── Fix 3: Increment daysAgo ──────────────────────────────────────────────────
+
+def increment_days_ago(html_path: str) -> bool:
+    """Increment daysAgo for all jobs with daysAgo > 0 (new jobs stay at 0). Returns True if changed."""
+    with open(html_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    original = content
+
+    def _inc(m):
+        return f"daysAgo: {int(m.group(1)) + 1},"
+
+    # Only touches values >= 1; new jobs at 0 are untouched
+    content = re.sub(r"daysAgo:\s*([1-9]\d*),", _inc, content)
+
+    if content != original:
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        changed = len(re.findall(r"daysAgo:\s*([1-9]\d*),", original))
+        print(f"  [INFO] daysAgo incremented for {changed} jobs", flush=True)
+        return True
+    print("  [INFO] No daysAgo values to increment", flush=True)
+    return False
+
+
+# ── Fix 2: Apply pipeline status ──────────────────────────────────────────────
+
+def apply_pipeline_status(html_path: str, pipeline_path: str) -> bool:
+    """Read pipeline.json and update each job's status field in index.html. Returns True if changed."""
+    if not os.path.exists(pipeline_path):
+        print("  [INFO] pipeline.json not found — skipping status sync", flush=True)
+        return False
+    try:
+        with open(pipeline_path, "r", encoding="utf-8") as f:
+            pipeline = json.load(f)
+    except Exception as e:
+        print(f"  [WARN] pipeline.json read error: {e}", flush=True)
+        return False
+
+    with open(html_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    original = content
+
+    for status in ("Applied", "Interview", "Offer"):
+        for entry in pipeline.get(status, []):
+            job_id = entry.get("id")
+            if job_id is None:
+                continue
+            # Match the id field, then within 600 chars find and replace the status field
+            pattern = rf'(id:\s*{job_id}\s*,[\s\S]{{0,600}}?status:\s*)"[^"]*"'
+            replacement = rf'\g<1>"{status}"'
+            new_content = re.sub(pattern, replacement, content)
+            if new_content != content:
+                print(f"  [INFO] pipeline: job {job_id} → {status}", flush=True)
+                content = new_content
+
+    if content != original:
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        return True
+    print("  [INFO] No pipeline status changes needed", flush=True)
+    return False
+
+
 # ── Git helpers ───────────────────────────────────────────────────────────────
 
 def git_commit_push(repo_dir: str, count: int):
@@ -842,18 +905,28 @@ def main():
     print(f"  New qualifying jobs: {len(new_jobs)}", flush=True)
 
     # Step 4: Append to HTML
-    print("\n[STEP 5] Updating job_board.html ...", flush=True)
+    print("\n[STEP 5] Updating index.html ...", flush=True)
     added = 0
     if new_jobs:
         added = append_jobs_to_html(JOB_BOARD_PATH, new_jobs, max_id)
         print(f"  Appended {added} jobs", flush=True)
 
-    # Step 5: Commit & push
-    if added > 0:
+    # Step 5b: Increment daysAgo for all existing jobs (new jobs stay at 0)
+    print("\n[STEP 5b] Incrementing daysAgo ...", flush=True)
+    days_changed = increment_days_ago(JOB_BOARD_PATH)
+
+    # Step 5c: Sync pipeline status from pipeline.json
+    pipeline_path = os.path.join(REPO_DIR, "pipeline.json")
+    print("\n[STEP 5c] Syncing pipeline status ...", flush=True)
+    pipeline_changed = apply_pipeline_status(JOB_BOARD_PATH, pipeline_path)
+
+    # Step 5: Commit & push if anything changed
+    any_changes = added > 0 or days_changed or pipeline_changed
+    if any_changes:
         print("\n[STEP 6] Committing and pushing ...", flush=True)
         git_commit_push(REPO_DIR, added)
     else:
-        print("\n[STEP 6] No new jobs — skipping commit", flush=True)
+        print("\n[STEP 6] No changes — skipping commit", flush=True)
 
     # Step 6: Email digest
     print("\n[STEP 7] Sending email digest ...", flush=True)
