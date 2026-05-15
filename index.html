@@ -3677,9 +3677,9 @@ function renderCard(job, idx) {
       <div class="footer-actions">
         <button class="btn-pos" id="pos-btn-${job.id}" onclick="togglePanel(${job.id})">Why I Fit ↓</button>
         ${job.status === 'To Apply'
-          ? `<button class="btn-mark-applied" id="applied-btn-${job.id}" onclick="markApplied(${job.id},this)">✓ Mark Applied</button>`
+          ? `<button class="btn-mark-applied" id="applied-btn-${job.id}">✓ Mark Applied</button>`
           : job.status === 'Applied'
-          ? `<button class="btn-undo" id="applied-btn-${job.id}" onclick="undoApplied(${job.id})">↩ Undo Applied</button>`
+          ? `<button class="btn-undo" id="applied-btn-${job.id}">↩ Undo Applied</button>`
           : ''}
         ${job.url
           ? `<a class="btn-apply" href="${job.url}" target="_blank" rel="noopener">Apply Now →</a>`
@@ -3911,7 +3911,7 @@ function addToSidebar(job) {
       <div class="sidebar-co">${job.company}</div>
       <div class="sidebar-role">${job.role}</div>
     </div>
-    <button class="sidebar-undo" onclick="undoApplied(${job.id})" title="Undo">↩</button>
+    <button class="sidebar-undo" title="Undo">↩</button>
   `;
   list.appendChild(item);
   sidebar.classList.add('has-items');
@@ -3945,6 +3945,28 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('js-search').addEventListener('input', refresh);
   document.getElementById('js-fit-toggle').addEventListener('change', refresh);
   document.getElementById('js-sort').addEventListener('change', refresh);
+
+  // Event delegation for card buttons — works regardless of inline onclick state
+  document.getElementById('js-grid').addEventListener('click', function(e) {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const card = btn.closest('.job-card');
+    if (!card) return;
+    const id = parseInt(card.dataset.id, 10);
+    if (btn.classList.contains('btn-mark-applied')) markApplied(id, btn);
+    if (btn.classList.contains('btn-undo'))         undoApplied(id);
+    if (btn.classList.contains('btn-pos'))          togglePanel(id);
+  });
+
+  // Event delegation for sidebar undo buttons
+  document.getElementById('js-sidebar-list').addEventListener('click', function(e) {
+    const btn = e.target.closest('.sidebar-undo');
+    if (!btn) return;
+    const item = btn.closest('.sidebar-item');
+    if (!item) return;
+    const id = parseInt(item.id.replace('sidebar-item-', ''), 10);
+    undoApplied(id);
+  });
 
   updateStats();
   refresh();
