@@ -3851,20 +3851,24 @@ function saveAppliedToStorage() {
 
 function markApplied(id) {
   const job = JOBS.find(j => j.id === id);
-  if (!job || job.status === 'Applied') return;
+  if (!job) return;
 
-  // Immediate button feedback so click is visible
+  // Immediate button feedback
   const btn = document.getElementById(`applied-btn-${id}`);
   if (btn) { btn.textContent = '✓ Applied!'; btn.disabled = true; }
 
+  // Update state (idempotent — safe to call even if already Applied)
   job.status = 'Applied';
   saveAppliedToStorage();
   updateStats();
-  addToSidebar(job);
 
+  // Add to sidebar only if not already there
+  if (!document.getElementById(`sidebar-item-${id}`)) addToSidebar(job);
+
+  // Always remove card from grid if it's still in the DOM
   const card = document.querySelector(`.job-card[data-id="${id}"]`);
   if (card) {
-    card.style.animationDelay = '0s'; // clear render-time delay so cardExit plays immediately
+    card.style.animationDelay = '0s';
     card.classList.add('is-removing');
     setTimeout(() => card.remove(), 350);
   }
