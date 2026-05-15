@@ -3979,7 +3979,9 @@ function addToSidebar(job) {
 
   let btns = '';
   if (job.status === 'Applied') {
-    btns = `<button class="sidebar-undo"    title="Undo — move back to To Apply">↩</button>`;
+    btns = `<button class="sidebar-undo"    title="Undo — move back to To Apply">↩</button>
+            <button class="sidebar-advance" title="Advance to Interview">→ Interview</button>
+            ${linkBtn}`;
   } else if (job.status === 'Interview') {
     btns = `<button class="sidebar-regress" title="Move back to Applied">↩</button>
             <button class="sidebar-advance" title="Advance to Offer">→ Offer</button>
