@@ -3852,16 +3852,22 @@ function saveAppliedToStorage() {
 function markApplied(id) {
   const job = JOBS.find(j => j.id === id);
   if (!job || job.status === 'Applied') return;
+
+  // Immediate button feedback so click is visible
+  const btn = document.getElementById(`applied-btn-${id}`);
+  if (btn) { btn.textContent = '✓ Applied!'; btn.disabled = true; }
+
   job.status = 'Applied';
   saveAppliedToStorage();
   updateStats();
-  // Animate card out then remove from DOM
+  addToSidebar(job);
+
   const card = document.querySelector(`.job-card[data-id="${id}"]`);
   if (card) {
+    card.style.animationDelay = '0s'; // clear render-time delay so cardExit plays immediately
     card.classList.add('is-removing');
-    setTimeout(() => card.remove(), 300);
+    setTimeout(() => card.remove(), 350);
   }
-  addToSidebar(job);
 }
 
 function undoApplied(id) {
