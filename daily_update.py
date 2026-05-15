@@ -8,7 +8,7 @@ Usage (GitHub Actions sets env vars automatically):
   APIFY_TOKEN=...  RESEND_API_KEY=...  TO_EMAIL=...  python3 daily_update.py
 """
 
-import json, os, re, sys, time, tempfile, subprocess, datetime, urllib.request, urllib.error
+import json, os, re, sys, time, tempfile, subprocess, datetime, urllib.request, urllib.error, base64
 
 # ── Config ────────────────────────────────────────────────────────────────────
 APIFY_TOKEN    = os.environ.get("APIFY_TOKEN", "")
@@ -18,6 +18,7 @@ GITHUB_PAT     = os.environ.get("GITHUB_PAT", "")
 REPO_DIR       = os.environ.get("REPO_DIR", os.path.dirname(os.path.abspath(__file__)))
 JOB_BOARD_PATH = os.path.join(REPO_DIR, "index.html")
 TODAY          = datetime.date.today().isoformat()
+ANTHROPIC_KEY  = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # ── Apify helpers ─────────────────────────────────────────────────────────────
 
@@ -819,13 +820,29 @@ def build_email_html(new_jobs: list, total_jobs: int) -> tuple:
     return subject, body
 
 
-def send_email(subject: str, html_body: str):
+def send_email(subject: str, html_body: str, attachments: list = None):
+    """attachments: optional list of local file paths to attach."""
     payload = {
         "from":    "Job Board <onboarding@resend.dev>",
         "to":      [TO_EMAIL],
         "subject": subject,
         "html":    html_body,
     }
+
+    if attachments:
+        att_list = []
+        for fpath in attachments:
+            try:
+                with open(fpath, "rb") as f:
+                    att_list.append({
+                        "filename": os.path.basename(fpath),
+                        "content":  base64.b64encode(f.read()).decode("utf-8"),
+                    })
+            except Exception as e:
+                print(f"  [WARN] Could not attach {fpath}: {e}", flush=True)
+        if att_list:
+            payload["attachments"] = att_list
+
     tmp_path = os.path.join(tempfile.gettempdir(), "resend_payload.json")
     with open(tmp_path, "w") as f:
         json.dump(payload, f)
@@ -840,6 +857,239 @@ def send_email(subject: str, html_body: str):
     print("Resend response:", result.stdout, flush=True)
     if result.returncode != 0:
         print("Resend error:", result.stderr, flush=True)
+
+
+# ── Resume package ────────────────────────────────────────────────────────────
+
+RESUME_TEXT = """\
+SARIK ENG
+Richmond, BC  |  236-513-1896  |  sarikc2@gmail.com  |  Permanent Resident of Canada
+
+PROFESSIONAL SUMMARY
+Client-focused banking and financial services professional with 7+ years of front-line experience building customer relationships, explaining complex financial processes, and delivering solutions across regulated environments. Currently completing the Canadian Securities Course (CSC) — Exam 1 passed, Exam 2 scheduled June 2026; CPH in progress. Certified in Federal Income Tax (H&R Block, 2025). Hands-on investor across equities, ETFs, and crypto. MBA (Distinction). Trilingual: English, Khmer, French.
+
+CORE COMPETENCIES
+Client Relationship Building & Needs Assessment | Canadian Securities Course (CSC) — Exam 1 Passed
+Banking Solutions & Financial Products Awareness | Federal Income Tax — H&R Block Certified (2025)
+Multi-Channel Customer Service (Phone, Email, In-Person) | MS Office Suite: Word, Excel, Outlook
+Regulatory Compliance & Confidentiality | Problem Resolution & Issue Escalation
+Cash & Non-Cash Transaction Support | Trilingual: English, Khmer, French
+
+PROFESSIONAL EXPERIENCE
+Tax Preparer & Customer Representative (Contract Full-time)  |  Dhiman & Company Inc., Richmond, BC
+Jan 2026 – May 2026
+- Guided clients through a complex regulated filing process via phone and email, explaining requirements and timelines from intake to completion
+- Applied CRA legislation to assess client eligibility, explain financial obligations, and prepare accurate T1/T2 returns and GST/HST reconciliations
+- Identified discrepancies in client financial records and resolved them before filing; maintained audit-ready documentation under strict confidentiality
+- Provided direct administrative and financial support to management, adapting to shifting priorities without compromising accuracy
+
+Sales Associate (Part-Time)  |  Running Room, Richmond, BC
+Oct 2024 – Dec 2025
+- Operated store independently; assessed individual customer needs through targeted questions and delivered confident, tailored recommendations
+- Built repeat customer relationships through consistent, knowledgeable, and personalized service interactions
+
+Customer Service Representative (Full-time)  |  TLC Healthcare Services Inc., Parksville, BC
+Oct 2023 – Dec 2025
+- Managed 50+ daily client interactions via phone and in-person in a regulated environment; resolved issues in real time and escalated complex cases
+- Maintained patient records across two regulated platforms (Kroll, ImmsBC); performed data entry and ensured file integrity
+- Exercised good judgement in confidential matters and applied patience and tact consistently with clients from diverse backgrounds
+
+Sales Associate (Part-Time)  |  The Home Depot, West Vancouver & Nanaimo, BC
+Mar 2022 – Oct 2025
+- Provided in-person, phone, and online customer support in a high-volume retail environment; used internal systems for order management and inventory tracking
+
+Store Manager (Seasonal)  |  Two Roads Retail Specialist Inc., West Vancouver, BC
+Aug – Oct 2023
+- Led day-to-day operations including staff scheduling, performance reviews, and sales reporting with minimal supervision
+- Promoted digital data capture at point of sale above company average; trained team on customer engagement standards
+
+Sales & Marketing Manager (Full-time)  |  Vattanac Properties (The Atom), Phnom Penh, Cambodia
+Jan – Dec 2021
+- Managed B2B and B2C client accounts through structured follow-up and relationship-building
+- Prepared budget proposals and collaborated cross-functionally with leadership
+
+Business Development Manager (Full-time)  |  Naki Group (Cira Arthika Tourism), Cambodia
+Jun 2019 – Jan 2021
+- Built client and vendor portfolio from launch; negotiated multi-region contracts
+- Trained internal team on client service standards
+
+Sales Manager (Full-time)  |  AboutAsia Travel, Siem Reap, Cambodia
+Jan 2014 – Oct 2016
+- Sold customized packages to international clients via phone and email
+- Resolved complaints and refund requests with discretion to protect client relationships and revenue
+
+EDUCATION & TRAINING
+Master of Business Administration (Distinction)  |  University Canada West, Vancouver, BC  |  Jan 2022 – Jul 2023
+Web Development Bootcamp  |  BrainStation, Vancouver, BC  |  Apr – Jun 2023
+Master of Tourism Management  |  Victoria University of Wellington, New Zealand  |  Mar 2017 – Apr 2019  (NZ Government Scholarship)
+Bachelor of Business Administration  |  National University of Management, Phnom Penh, Cambodia  |  Sep 2007 – Oct 2011  (Full Royal Government Scholarship)
+
+CERTIFICATIONS & FINANCIAL KNOWLEDGE
+Canadian Securities Course (CSC): Exam 1 passed; Exam 2 scheduled June 2026
+Federal Income Tax Level 1 — H&R Block (Completed December 2025)
+Hands-on investor: self-directed trading across equities, ETFs, and crypto
+MS Office Suite: Word, Excel (Advanced), Outlook — daily professional use
+CRM & Platforms: Zoho CRM, Kroll, ImmsBC; Google Analytics, Tableau
+
+LANGUAGES & VOLUNTEER
+Languages: English (Full Professional) · Khmer (Native) · French (Classroom Study)
+President, Cambodian Student Association of Wellington (2018–2019)
+Volunteer, SEALNet anti-trafficking awareness program (2016)
+"""
+
+
+def claude_tailor(job: dict, api_key: str) -> dict | None:
+    """Call Claude to tailor resume + write cover letter for a job. Returns parsed dict or None."""
+    prompt = f"""You are a professional resume writer. Tailor the following resume for this specific job and return ONLY a valid JSON object — no markdown, no preamble.
+
+JSON schema (all fields required):
+{{
+  "summary": "2-3 sentence tailored professional summary for this role",
+  "competencies": ["item 1", "item 2", ... up to 10 items most relevant to this job],
+  "experience_blocks": [
+    {{
+      "title_line": "Job Title (Full-time/Part-time)  |  Company, Location",
+      "date_range": "Mon Year – Mon Year",
+      "bullets": ["rewritten bullet 1 mirroring job language", "bullet 2", "bullet 3"]
+    }}
+  ],
+  "education": ["degree line 1", "degree line 2", "degree line 3", "degree line 4"],
+  "certifications": ["cert 1", "cert 2", "cert 3", "cert 4", "cert 5"],
+  "cover_letter": "Full cover letter body paragraphs separated by double newlines. Do NOT include salutation, date, or sign-off — those are added automatically."
+}}
+
+Rules:
+- Select the 3–5 most relevant experience blocks for this role; rewrite bullets to mirror the job's language
+- Emphasize CSC Exam 1 passed, Exam 2 June 2026, MBA Distinction, and trilingual fluency where relevant
+- Cover letter: 3–4 paragraphs, confident and specific, reference the company by name
+- Never fabricate credentials, dates, or experience
+- Return ONLY the JSON object
+
+JOB POSTING:
+Company: {job['company']}
+Role: {job['role']}
+Location: {job.get('location', '')}
+Salary: {job.get('salary', 'Not listed')}
+Description: {(job.get('desc') or '')[:2000]}
+
+CANDIDATE RESUME:
+{RESUME_TEXT}"""
+
+    payload = json.dumps({
+        "model":      "claude-sonnet-4-6",
+        "max_tokens": 4096,
+        "messages":   [{"role": "user", "content": prompt}],
+    }).encode()
+
+    req = urllib.request.Request("https://api.anthropic.com/v1/messages", data=payload, method="POST")
+    req.add_header("Content-Type",       "application/json")
+    req.add_header("x-api-key",          api_key)
+    req.add_header("anthropic-version",  "2023-06-01")
+
+    try:
+        resp = urllib.request.urlopen(req, timeout=90)
+        data = json.loads(resp.read())
+        text = data["content"][0]["text"].strip()
+        # Strip markdown code fence if Claude wrapped the JSON
+        text = re.sub(r'^```(?:json)?\n?', '', text)
+        text = re.sub(r'\n?```$', '', text).strip()
+        return json.loads(text)
+    except Exception as e:
+        print(f"  [WARN] Claude tailor error for {job.get('company','?')}: {e}", flush=True)
+        return None
+
+
+def generate_resume_package(new_jobs: list) -> list:
+    """Generate tailored resume+cover letter .docx pairs for top 10 jobs. Returns list of file paths."""
+    top_jobs = sorted(
+        [j for j in new_jobs if not j.get("dealbreaker")],
+        key=lambda x: x["fitScore"], reverse=True
+    )[:10]
+
+    if not top_jobs:
+        print("  [INFO] No qualifying jobs for resume package", flush=True)
+        return []
+
+    if not ANTHROPIC_KEY:
+        print("  [WARN] ANTHROPIC_API_KEY not set — skipping resume package", flush=True)
+        return []
+
+    generate_docs_js = os.path.join(REPO_DIR, "generate-docs.js")
+    if not os.path.exists(generate_docs_js):
+        print("  [WARN] generate-docs.js not found — skipping resume package", flush=True)
+        return []
+
+    output_dir = os.path.join(tempfile.gettempdir(), "resume-package")
+    os.makedirs(output_dir, exist_ok=True)
+
+    generated_files = []
+
+    for job in top_jobs:
+        print(f"  [INFO] Tailoring docs for {job['company']} — {job['role']}", flush=True)
+
+        content = claude_tailor(job, ANTHROPIC_KEY)
+        if not content:
+            continue
+
+        cover_letter   = content.pop("cover_letter", "")
+        resume_content = content
+
+        payload_path = os.path.join(output_dir, "payload_tmp.json")
+        with open(payload_path, "w") as f:
+            json.dump({
+                "job": {
+                    "company":  job["company"],
+                    "role":     job["role"],
+                    "location": job.get("location", ""),
+                    "salary":   job.get("salary", ""),
+                    "fitScore": job.get("fitScore", 0),
+                },
+                "resume_content": resume_content,
+                "cover_letter":   cover_letter,
+                "output_dir":     output_dir,
+            }, f)
+
+        result = subprocess.run(
+            ["node", generate_docs_js, payload_path],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode != 0:
+            print(f"  [WARN] generate-docs.js failed: {result.stderr[:200]}", flush=True)
+            continue
+
+        try:
+            paths = json.loads(result.stdout.strip())
+            generated_files.append(paths["resume"])
+            generated_files.append(paths["cover_letter"])
+            print(f"  [INFO] {os.path.basename(paths['resume'])} + cover letter created", flush=True)
+        except Exception as e:
+            print(f"  [WARN] Could not parse generate-docs output: {e}", flush=True)
+
+    return generated_files
+
+
+def build_resume_package_email(jobs: list) -> str:
+    board_url = "https://rickandtech1.github.io/financial-job-board/"
+    count = len(jobs)
+    items = "".join(
+        f"<li><strong>{j['company']}</strong> — {j['role']} "
+        f"<span style='color:#888;font-size:12px;'>({j['fitScore']}/100)</span></li>"
+        for j in jobs
+    )
+    return f"""
+<html><body style="font-family:Arial,sans-serif;max-width:680px;margin:auto;color:#222;">
+<h2 style="color:#1a237e;">📄 Tailored Resume Package — {TODAY}</h2>
+<p>Here are tailored resume and cover letter files for today's top {count} role{'s' if count != 1 else ''}. Each pair is attached as a .docx file ready to review and send.</p>
+<ul style="line-height:1.8;">{items}</ul>
+<p>Each pair:</p>
+<ul>
+  <li><strong>Resume_[Company]_[Role].docx</strong> — Tailored summary + selected experience</li>
+  <li><strong>CoverLetter_[Company]_[Role].docx</strong> — 3–4 paragraph targeted cover letter</li>
+</ul>
+<p><a href="{board_url}" style="color:#1a237e;">Open your job board</a> to manage your pipeline.</p>
+<hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
+<p style="font-size:12px;color:#999;">Automated resume package · Sarik Eng Job Board · Powered by Claude</p>
+</body></html>"""
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -928,11 +1178,24 @@ def main():
     else:
         print("\n[STEP 6] No changes — skipping commit", flush=True)
 
-    # Step 6: Email digest
+    # Step 7: Email digest
     print("\n[STEP 7] Sending email digest ...", flush=True)
     total_jobs = count_jobs_in_html(JOB_BOARD_PATH)
     subject, html_body = build_email_html(new_jobs, total_jobs)
     send_email(subject, html_body)
+
+    # Step 8: Generate and email tailored resume package (new non-dealbreaker jobs only)
+    non_db_new = [j for j in new_jobs if not j.get("dealbreaker")]
+    if non_db_new and ANTHROPIC_KEY:
+        print("\n[STEP 8] Generating tailored resume package ...", flush=True)
+        doc_files = generate_resume_package(non_db_new)
+        if doc_files:
+            top_jobs = sorted(non_db_new, key=lambda x: x["fitScore"], reverse=True)[:len(doc_files) // 2]
+            pkg_subject = f"Resume Package — {TODAY}: {len(doc_files) // 2} tailored set(s)"
+            send_email(pkg_subject, build_resume_package_email(top_jobs), attachments=doc_files)
+            print(f"  [INFO] Resume package sent: {len(doc_files) // 2} set(s)", flush=True)
+    else:
+        print("\n[STEP 8] Skipping resume package (no new non-dealbreaker jobs or no API key)", flush=True)
 
     print(f"\n=== Done. {added} new roles added. Email sent. ===\n", flush=True)
 

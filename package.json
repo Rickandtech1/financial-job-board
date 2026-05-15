@@ -1,0 +1,23 @@
+{
+  "name": "financial-job-board",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rickandtech1/financial-job-board.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Rickandtech1/financial-job-board/issues"
+  },
+  "homepage": "https://github.com/Rickandtech1/financial-job-board#readme",
+  "dependencies": {
+    "docx": "^9.6.1"
+  }
+}
