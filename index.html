@@ -4046,7 +4046,9 @@ function markApplied(id, btn) {
   if (card) {
     card.style.animationDelay = '0s';
     card.classList.add('is-removing');
-    setTimeout(function() { if (card.parentNode) card.parentNode.removeChild(card); }, 350);
+    setTimeout(function() { refresh(); }, 350);
+  } else {
+    refresh();
   }
 }
 
