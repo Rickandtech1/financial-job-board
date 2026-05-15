@@ -2614,7 +2614,6 @@ const JOBS = [
     whyFit: "⚠️ Credential and experience gap — score adjusted. BlueShore's FA role targets experienced advisors; the $75–85K base reflects that seniority level. Full CSC/IFIC licensing and demonstrated advisory experience will likely be required. This is a strong future-state target: apply after June 2026 CSC Exam 2 + 12–18 months of credit union advisory experience. The salary ceiling ($85K+ with bonus) is the highest in the Metro Vancouver credit union sector for an FA role.",
     hook: "Monitor BlueShore's careers page quarterly. When you're ready, lead with your CRM proficiency (Zoho), regulated client-service depth, and CSC credentials. BlueShore's premium brand means they hire for professionalism and presentation as much as credentials — the 'financial spa' culture is a real differentiator."
   },
-,
   {
     id: 55,
     company: "Scotiabank",
@@ -3854,7 +3853,7 @@ function markApplied(id, btn) {
   const card = btn ? btn.closest('.job-card') : document.querySelector(`.job-card[data-id="${id}"]`);
 
   // Find job — try strict then loose equality as fallback
-  const job = JOBS.find(j => j.id === id) || JOBS.find(j => j.id == id);
+  const job = JOBS.find(j => j != null && j.id === id) || JOBS.find(j => j != null && j.id == id);
   if (!job) return;
 
   // Immediate button feedback
