@@ -976,28 +976,52 @@
       padding: 1.2rem 1rem;
     }
 
-    .sidebar-header {
+    .sidebar-section {
+      margin-bottom: 1.1rem;
+    }
+    .sidebar-section:last-of-type { margin-bottom: 0; }
+
+    .sidebar-section-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 1rem;
-      padding-bottom: 0.6rem;
-      border-bottom: 1px solid var(--border);
+      margin-bottom: 0.5rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
     }
 
-    .sidebar-title {
+    .sidebar-section-title {
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.6rem;
+      font-size: 0.58rem;
       font-weight: 700;
       letter-spacing: 0.16em;
       text-transform: uppercase;
-      color: var(--gold);
     }
 
-    .sidebar-count {
+    .sidebar-section-count {
       font-family: 'Playfair Display', Georgia, serif;
-      font-size: 1.1rem;
-      color: var(--gold-lt);
+      font-size: 1rem;
+    }
+
+    .sidebar-section-applied .sidebar-section-title { color: var(--gold); }
+    .sidebar-section-applied .sidebar-section-count { color: var(--gold-lt); }
+    .sidebar-section-applied .sidebar-item { padding-left: 6px; border-left: 2px solid rgba(200,169,81,0.35); }
+
+    .sidebar-section-interview .sidebar-section-title { color: #2dd4bf; }
+    .sidebar-section-interview .sidebar-section-count { color: #2dd4bf; }
+    .sidebar-section-interview .sidebar-item { padding-left: 6px; border-left: 2px solid rgba(45,212,191,0.4); }
+
+    .sidebar-section-offer .sidebar-section-title { color: #f59e0b; }
+    .sidebar-section-offer .sidebar-section-count { color: #f59e0b; }
+    .sidebar-section-offer .sidebar-item { padding-left: 6px; border-left: 2px solid rgba(245,158,11,0.4); }
+
+    .sidebar-item.is-advanceable {
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.15s;
+    }
+    .sidebar-item.is-advanceable:hover {
+      background: rgba(255,255,255,0.05);
     }
 
     .sidebar-empty {
@@ -1200,13 +1224,28 @@
 <!-- ── BOARD LAYOUT ─────────────────────────────────────────────────────────── -->
 <div class="board-layout">
   <aside class="applied-sidebar" id="js-applied-sidebar">
-    <div class="sidebar-header">
-      <span class="sidebar-title">Applied</span>
-      <span class="sidebar-count" id="js-sidebar-count">0</span>
+    <div class="sidebar-section sidebar-section-applied" id="js-section-applied" style="display:none">
+      <div class="sidebar-section-header">
+        <span class="sidebar-section-title">Applied</span>
+        <span class="sidebar-section-count" id="js-count-applied">0</span>
+      </div>
+      <div class="sidebar-section-list" id="js-list-applied"></div>
     </div>
-    <div class="sidebar-list" id="js-sidebar-list">
-      <p class="sidebar-empty">Mark jobs applied to track them here.</p>
+    <div class="sidebar-section sidebar-section-interview" id="js-section-interview" style="display:none">
+      <div class="sidebar-section-header">
+        <span class="sidebar-section-title">Interview</span>
+        <span class="sidebar-section-count" id="js-count-interview">0</span>
+      </div>
+      <div class="sidebar-section-list" id="js-list-interview"></div>
     </div>
+    <div class="sidebar-section sidebar-section-offer" id="js-section-offer" style="display:none">
+      <div class="sidebar-section-header">
+        <span class="sidebar-section-title">Offer</span>
+        <span class="sidebar-section-count" id="js-count-offer">0</span>
+      </div>
+      <div class="sidebar-section-list" id="js-list-offer"></div>
+    </div>
+    <p class="sidebar-empty" id="js-sidebar-empty">Mark jobs applied to track them here.</p>
   </aside>
   <div class="board-main">
     <div class="job-grid" id="js-grid">
@@ -3564,10 +3603,9 @@ PLEASE DELIVER ALL OF THE FOLLOWING:
 ═══════════════════════════════════════════════════════════════════════════ */
 function updateStats() {
   const total      = JOBS.length;
-  const appliedIds = (() => { try { return JSON.parse(localStorage.getItem(APPLIED_KEY) || '[]'); } catch(e) { return []; } })();
-  const applied    = appliedIds.length;
-  const interviews = JOBS.filter(j => j.status === 'Interview').length;
-  const clean      = JOBS.filter(j => !j.dealbreaker);
+  const applied    = JOBS.filter(j => j != null && j.status === 'Applied').length;
+  const interviews = JOBS.filter(j => j != null && j.status === 'Interview').length;
+  const clean      = JOBS.filter(j => j != null && !j.dealbreaker);
   const top        = clean.reduce((a, b) => b.fitScore > a.fitScore ? b : a, clean[0]);
 
   document.getElementById('js-total').textContent      = total;
@@ -3829,43 +3867,104 @@ function showToast() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   APPLIED TRACKING
+   PIPELINE TRACKING  (Applied → Interview → Offer)
 ═══════════════════════════════════════════════════════════════════════════ */
-const APPLIED_KEY = 'jb_applied_v2';
+const APPLIED_KEY  = 'jb_applied_v2';   // kept for cleanup on load
+const PIPELINE_KEY = 'jb_pipeline_v1';
 
-function loadAppliedFromStorage() {
+function savePipelineToStorage() {
+  const pipeline = {
+    Applied:   JOBS.filter(j => j != null && j.status === 'Applied').map(j => j.id),
+    Interview: JOBS.filter(j => j != null && j.status === 'Interview').map(j => j.id),
+    Offer:     JOBS.filter(j => j != null && j.status === 'Offer').map(j => j.id),
+  };
+  localStorage.setItem(PIPELINE_KEY, JSON.stringify(pipeline));
+}
+
+function loadPipelineFromStorage() {
   try {
-    const saved = JSON.parse(localStorage.getItem(APPLIED_KEY) || '[]');
-    saved.forEach(id => {
-      const job = JOBS.find(j => j.id === id);
-      if (job) job.status = 'Applied';
+    const saved = JSON.parse(localStorage.getItem(PIPELINE_KEY) || '{}');
+    ['Applied', 'Interview', 'Offer'].forEach(status => {
+      (saved[status] || []).forEach(id => {
+        const job = JOBS.find(j => j != null && j.id === id);
+        if (job) job.status = status;
+      });
     });
   } catch(e) {}
 }
 
-function saveAppliedToStorage() {
-  const ids = JOBS.filter(j => j.status === 'Applied').map(j => j.id);
-  localStorage.setItem(APPLIED_KEY, JSON.stringify(ids));
+function updateSidebarVisibility() {
+  const sidebar  = document.getElementById('js-applied-sidebar');
+  const emptyEl  = document.getElementById('js-sidebar-empty');
+  let anyItems   = false;
+
+  ['applied', 'interview', 'offer'].forEach(stage => {
+    const listEl    = document.getElementById(`js-list-${stage}`);
+    const sectionEl = document.getElementById(`js-section-${stage}`);
+    const count     = listEl.querySelectorAll('.sidebar-item').length;
+    document.getElementById(`js-count-${stage}`).textContent = count;
+    sectionEl.style.display = count > 0 ? '' : 'none';
+    if (count > 0) anyItems = true;
+  });
+
+  if (anyItems) {
+    sidebar.classList.add('has-items');
+    emptyEl.style.display = 'none';
+  } else {
+    sidebar.classList.remove('has-items');
+    emptyEl.style.display = '';
+  }
+}
+
+function addToSidebar(job) {
+  const stage  = job.status === 'Interview' ? 'interview' : job.status === 'Offer' ? 'offer' : 'applied';
+  const listEl = document.getElementById(`js-list-${stage}`);
+
+  // Remove existing item (handles moves between sections)
+  const existing = document.getElementById(`sidebar-item-${job.id}`);
+  if (existing) existing.remove();
+
+  const item = document.createElement('div');
+  item.className = 'sidebar-item' + (job.status !== 'Offer' ? ' is-advanceable' : '');
+  item.id        = `sidebar-item-${job.id}`;
+  item.dataset.id = String(job.id);
+  item.innerHTML = `
+    <div class="sidebar-logo">${job.logo}</div>
+    <div class="sidebar-info">
+      <div class="sidebar-co">${job.company}</div>
+      <div class="sidebar-role">${job.role}</div>
+    </div>
+    ${job.status === 'Applied' ? '<button class="sidebar-undo" title="Undo applied">↩</button>' : ''}
+  `;
+  listEl.appendChild(item);
+  updateSidebarVisibility();
+}
+
+function advanceStage(id) {
+  const job = JOBS.find(j => j != null && j.id === id);
+  if (!job) return;
+  if      (job.status === 'Applied')   job.status = 'Interview';
+  else if (job.status === 'Interview') job.status = 'Offer';
+  else return;
+
+  savePipelineToStorage();
+  addToSidebar(job);
+  updateStats();
+  refresh();
 }
 
 function markApplied(id, btn) {
-  // Walk up from button to card — avoids all querySelector/ID-matching issues
   const card = btn ? btn.closest('.job-card') : document.querySelector(`.job-card[data-id="${id}"]`);
-
-  // Find job — try strict then loose equality as fallback
-  const job = JOBS.find(j => j != null && j.id === id) || JOBS.find(j => j != null && j.id == id);
+  const job  = JOBS.find(j => j != null && j.id === id) || JOBS.find(j => j != null && j.id == id);
   if (!job) return;
 
-  // Immediate button feedback
   if (btn) { btn.textContent = '✓ Applied!'; btn.disabled = true; }
 
   job.status = 'Applied';
-  saveAppliedToStorage();
+  savePipelineToStorage();
   updateStats();
 
-  try {
-    if (!document.getElementById(`sidebar-item-${job.id}`)) addToSidebar(job);
-  } catch(e) {}
+  if (!document.getElementById(`sidebar-item-${job.id}`)) addToSidebar(job);
 
   if (card) {
     card.style.animationDelay = '0s';
@@ -3875,48 +3974,15 @@ function markApplied(id, btn) {
 }
 
 function undoApplied(id) {
-  const job = JOBS.find(j => j.id === id);
+  const job = JOBS.find(j => j != null && j.id === id);
   if (!job || job.status !== 'Applied') return;
   job.status = 'To Apply';
-  saveAppliedToStorage();
+  savePipelineToStorage();
   updateStats();
-  // Remove from sidebar
   const item = document.getElementById(`sidebar-item-${id}`);
   if (item) item.remove();
-  // Hide sidebar if empty
-  const list = document.getElementById('js-sidebar-list');
-  if (!list.querySelector('.sidebar-item')) {
-    list.innerHTML = '<p class="sidebar-empty">Mark jobs applied to track them here.</p>';
-    document.getElementById('js-applied-sidebar').classList.remove('has-items');
-    document.getElementById('js-sidebar-count').textContent = '0';
-  }
-  // Re-render grid so card comes back
+  updateSidebarVisibility();
   refresh();
-}
-
-function addToSidebar(job) {
-  const sidebar = document.getElementById('js-applied-sidebar');
-  const list = document.getElementById('js-sidebar-list');
-  // Remove empty placeholder
-  const empty = list.querySelector('.sidebar-empty');
-  if (empty) empty.remove();
-  // Add item
-  const item = document.createElement('div');
-  item.className = 'sidebar-item';
-  item.id = `sidebar-item-${job.id}`;
-  item.innerHTML = `
-    <div class="sidebar-logo">${job.logo}</div>
-    <div class="sidebar-info">
-      <div class="sidebar-co">${job.company}</div>
-      <div class="sidebar-role">${job.role}</div>
-    </div>
-    <button class="sidebar-undo" title="Undo">↩</button>
-  `;
-  list.appendChild(item);
-  sidebar.classList.add('has-items');
-  // Update sidebar count
-  const count = list.querySelectorAll('.sidebar-item').length;
-  document.getElementById('js-sidebar-count').textContent = count;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -3924,10 +3990,12 @@ function addToSidebar(job) {
 ═══════════════════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
   try {
-    localStorage.removeItem(APPLIED_KEY); // nuke stale applied state on every load
-    loadAppliedFromStorage();
-    // Rebuild sidebar from persisted applied jobs
-    JOBS.filter(j => j.status === 'Applied').forEach(j => addToSidebar(j));
+    localStorage.removeItem(APPLIED_KEY);   // nuke legacy key only
+    loadPipelineFromStorage();
+    // Rebuild all 3 sidebar sections from in-memory job statuses
+    ['Applied', 'Interview', 'Offer'].forEach(status =>
+      JOBS.filter(j => j != null && j.status === status).forEach(j => addToSidebar(j))
+    );
     // Date
     const d = new Date();
     document.getElementById('js-date').textContent =
@@ -3946,14 +4014,17 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('js-fit-toggle').addEventListener('change', refresh);
     document.getElementById('js-sort').addEventListener('change', refresh);
 
-    // Event delegation for sidebar undo buttons
-    document.getElementById('js-sidebar-list').addEventListener('click', function(e) {
-      const btn = e.target.closest('.sidebar-undo');
-      if (!btn) return;
-      const item = btn.closest('.sidebar-item');
-      if (!item) return;
-      const id = parseInt(item.id.replace('sidebar-item-', ''), 10);
-      undoApplied(id);
+    // Sidebar: advance stage on item click, undo on ↩ button
+    document.getElementById('js-applied-sidebar').addEventListener('click', function(e) {
+      const undoBtn = e.target.closest('.sidebar-undo');
+      if (undoBtn) {
+        const item = undoBtn.closest('.sidebar-item');
+        if (!item) return;
+        undoApplied(parseInt(item.dataset.id, 10));
+        return;
+      }
+      const item = e.target.closest('.sidebar-item.is-advanceable');
+      if (item) advanceStage(parseInt(item.dataset.id, 10));
     });
 
     updateStats();
