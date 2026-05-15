@@ -3836,17 +3836,16 @@ function getFiltered() {
   });
 
   list.sort((a, b) => {
-    // Applied jobs always sink to the bottom in the All view
-    if (status === 'all') {
-      const aApplied = a.status === 'Applied' ? 1 : 0;
-      const bApplied = b.status === 'Applied' ? 1 : 0;
-      if (aApplied !== bApplied) return aApplied - bApplied;
-    }
+    // Pipeline jobs (Applied / Interview / Offer) always sink below active To Apply jobs
+    const aP = (a.status === 'Applied' || a.status === 'Interview' || a.status === 'Offer') ? 1 : 0;
+    const bP = (b.status === 'Applied' || b.status === 'Interview' || b.status === 'Offer') ? 1 : 0;
+    if (aP !== bP) return aP - bP;
+    // Within each group apply the chosen sort
     if (sort === 'company') return a.company.localeCompare(b.company) || b.fitScore - a.fitScore;
     if (sort === 'date')    return a.daysAgo - b.daysAgo || b.fitScore - a.fitScore;
     if (sort === 'salary')  return parseSalary(b.salary) - parseSalary(a.salary) || b.fitScore - a.fitScore;
-    // Default (fit): highest fit score first, then newest posting
-    return b.fitScore - a.fitScore || a.daysAgo - b.daysAgo;
+    // Default (fit): newest posting first, fit score as tiebreaker
+    return a.daysAgo - b.daysAgo || b.fitScore - a.fitScore;
   });
 
   return list;
@@ -3973,9 +3972,7 @@ function addToSidebar(job) {
   const existing = document.getElementById(`sidebar-item-${job.id}`);
   if (existing) existing.remove();
 
-  const linkBtn = job.url
-    ? `<a class="sidebar-link" href="${job.url}" target="_blank" rel="noopener" title="Open listing">🔗</a>`
-    : '';
+  const linkBtn = `<button class="sidebar-link" title="Jump to card" data-jump="${job.id}">🔗</button>`;
 
   let btns = '';
   if (job.status === 'Applied') {
@@ -4094,9 +4091,27 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('js-fit-toggle').addEventListener('change', refresh);
     document.getElementById('js-sort').addEventListener('change', refresh);
 
-    // Sidebar: button-specific handlers for undo, regress, and advance
+    // Sidebar: button-specific handlers for undo, regress, advance, and jump-to-card
     document.getElementById('js-applied-sidebar').addEventListener('click', function(e) {
-      if (e.target.closest('.sidebar-link')) return; // let <a> navigate naturally
+      const linkBtn = e.target.closest('.sidebar-link');
+      if (linkBtn) {
+        const jumpId = linkBtn.dataset.jump;
+        // Switch to All filter if the card isn't currently visible
+        const activeFilter = document.querySelector('.filter-btn.active');
+        if (activeFilter && activeFilter.dataset.status !== 'all') {
+          document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+          document.querySelector('.filter-btn[data-status="all"]').classList.add('active');
+          refresh();
+        }
+        const card = document.querySelector(`.job-card[data-id="${jumpId}"]`);
+        if (card) {
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          card.style.transition = 'box-shadow 0.2s';
+          card.style.boxShadow  = '0 0 0 2px #2dd4bf';
+          setTimeout(() => { card.style.boxShadow = ''; }, 1500);
+        }
+        return;
+      }
       const item = e.target.closest('.sidebar-item');
       if (!item) return;
       const id = parseInt(item.dataset.id, 10);
