@@ -129,6 +129,31 @@
 
     .header-right {
       text-align: right;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.5rem;
+    }
+
+    .btn-export-pipeline {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.58rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.22rem 0.7rem;
+      border-radius: 3px;
+      border: 1px solid var(--gold-dk);
+      background: transparent;
+      color: var(--gold-lt);
+      cursor: pointer;
+      transition: all 0.15s;
+      opacity: 0.7;
+    }
+    .btn-export-pipeline:hover {
+      opacity: 1;
+      background: rgba(200,169,81,0.08);
+      border-color: var(--gold);
     }
 
     .header-date {
@@ -1194,6 +1219,7 @@
     </div>
     <div class="header-right">
       <div class="header-date" id="js-date"></div>
+      <button class="btn-export-pipeline" onclick="exportPipeline()" title="Download pipeline.json, then commit it to GitHub to save your progress">⬇ Export Pipeline</button>
       <div class="cred-stack">
         <div class="cred-pill">CSC Exam 1 ✓ Passed</div>
         <div class="cred-pill">CSC Exam 2 · June 2026</div>
@@ -4237,6 +4263,25 @@ function undoApplied(id) {
   if (item) item.remove();
   updateSidebarVisibility();
   refresh();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EXPORT PIPELINE
+═══════════════════════════════════════════════════════════════════════════ */
+function exportPipeline() {
+  const raw = JSON.parse(localStorage.getItem('jb_pipeline_v1') || '{"Applied":[],"Interview":[],"Offer":[]}');
+  const out = { Applied: [], Interview: [], Offer: [] };
+  ['Applied', 'Interview', 'Offer'].forEach(status => {
+    (raw[status] || []).forEach(id => {
+      const job = JOBS.find(j => j != null && j.id === id);
+      if (job) out[status].push({ id: job.id, company: job.company, role: job.role });
+    });
+  });
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'pipeline.json';
+  a.click();
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
