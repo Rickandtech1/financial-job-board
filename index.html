@@ -494,6 +494,17 @@
       color: #f87171;
     }
 
+    .card-rank {
+      position: absolute;
+      top: 8px;
+      left: 12px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.2);
+    }
+
     /* Dealbreaker top banner */
     .db-banner {
       display: none;
@@ -3568,6 +3579,7 @@ function renderCard(job, idx) {
        onmouseenter="hlCo(this)" onmouseleave="unhlCo()"
        style="--co-rgb:${_hexRgb(_companyColorMap[job.company]||'#8888AA')};animation-delay:${idx * 0.055}s;background:linear-gradient(to right,rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0.45) 0%,rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0.10) 30%,rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0) 55%);border-left:4px solid ${_companyColorMap[job.company]||'#8888AA'}">
     <button class="btn-remove-card" onclick="removeCard(${job.id}); event.stopPropagation();" title="Remove this job">✕</button>
+    <span class="card-rank">#${idx + 1}</span>
     ${dbBanner}
     <div class="card-body">
       <div class="card-top">
