@@ -1203,7 +1203,25 @@
       flex: 1;
       min-width: 0;
     }
+    .btn-gen-docs {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.58rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.3rem 0.8rem;
+      border: 1px solid rgba(45,212,191,0.4);
+      background: rgba(45,212,191,0.06);
+      color: #2dd4bf;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn-gen-docs:hover { background: rgba(45,212,191,0.15); border-color: rgba(45,212,191,0.7); }
+    .btn-gen-docs.is-loading { opacity: 0.5; cursor: wait; }
   </style>
+  <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
 </head>
 <body>
 
@@ -1336,6 +1354,9 @@
 
 <!-- ─────────────────────────────────────────────────────────────────────────── -->
 <script>
+// Add your Anthropic API key here to enable Generate Docs
+const ANTHROPIC_API_KEY = '';
+
 /* ═══════════════════════════════════════════════════════════════════════════
    MY PROFILE — pasted into every Apply Now prompt
 ═══════════════════════════════════════════════════════════════════════════ */
@@ -3971,6 +3992,9 @@ function renderCard(job, idx) {
         ${job.url
           ? `<a class="btn-apply" href="${job.url}" target="_blank" rel="noopener">Apply Now →</a>`
           : `<span class="btn-apply btn-apply-none">No Link</span>`}
+        ${job.status === 'To Apply' && isDirectJobLink(job.url)
+          ? `<button class="btn-gen-docs" id="gen-docs-btn-${job.id}" onclick="generateDocs(${job.id})">📄 Generate Docs</button>`
+          : ''}
       </div>
     </div>
     <div class="pos-panel" id="pos-panel-${job.id}">
@@ -4349,6 +4373,407 @@ document.addEventListener('DOMContentLoaded', () => {
     console.error('DOMContentLoaded setup error:', e);
   }
 });
+
+// ── Generate Docs ─────────────────────────────────────────────────────────────
+
+function isDirectJobLink(url) {
+  if (!url) return false;
+  let u;
+  try { u = new URL(url); } catch { return false; }
+  const path = u.pathname;
+
+  // Reject: generic career/search pages
+  if (path === '/' || path === '') return false;
+  if (/\/(careers|jobs|work-with-us|current-opportunities)\/?$/i.test(path)) return false;
+  if (/\/about(-us|-[a-z]+)?\/careers\/?$/i.test(path)) return false;
+  if (/\/en\/careers\/?$/i.test(path)) return false;
+  if (/\/career\/[a-z-]+\.html$/i.test(path)) return false;
+  if (/(Careers_External_CA|Raymond_James_Ltd)\/?$/.test(path)) return false;
+  if (/job-search-results|\/search-results[?/]|\/jobs\?q=|\/search\?q=/i.test(url)) return false;
+  if (/ultipro\.(com|ca)\/.*\/JobBoard\//i.test(url) && !url.includes('OpportunityDetail')) return false;
+  if (/wd\d\.myworkdayjobs\.com/i.test(u.hostname) && !/\/job\//i.test(path)) return false;
+  if (/coastcapitalsavings\.com\/go\//i.test(url)) return false;
+
+  // Accept: specific job signals
+  if (/\/\d{5,}(\/|$)/.test(path)) return true;
+  if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(url)) return true;
+  if (/[?&](jid|jl)=[a-z0-9]{6,}/i.test(url)) return true;
+  if (/[?&]id=\d{8,}/.test(url)) return true;
+  if (/wd\d\.myworkdayjobs\.com/i.test(u.hostname) && /\/job\//i.test(path)) return true;
+  if (/\/job\/[A-Z][a-z]+-/i.test(path)) return true;
+  if (/\/job\/[A-Z][A-Z0-9-]{5,}(\/|$)/.test(path)) return true;
+  if (/\/job\/[A-Za-z0-9_-]{25,}$/.test(path)) return true;
+  if (/\/jobs\/view\/[a-z0-9-]+-\d{6,}/i.test(path)) return true;
+  if (/jobposting\/\d+/i.test(url)) return true;
+  if (/workable\.com\/.*\/j\/[A-Z0-9]+/i.test(url)) return true;
+  if (/jobs\.ca\/(job|offer)\/[0-9a-f-]{20,}/i.test(url)) return true;
+  if (/talent\.com\/view\?id=/i.test(url)) return true;
+  if (/careerbeacon\.com\/en\/job(-\d+)?\/\d+/i.test(url)) return true;
+  if (/discovertechnata\.com\/companies\/.*\/jobs\/\d+/i.test(url)) return true;
+  if (/eluta\.ca\/spl\//i.test(url)) return true;
+  if (/tdbank\.jobs\/.*\/[A-F0-9]{10,}\/job\//i.test(url)) return true;
+  if (/eduglobecorp\.com\/.vacancy\/job\//i.test(url)) return true;
+  return false;
+}
+
+async function generateDocs(jobId) {
+  if (!ANTHROPIC_API_KEY) {
+    alert('Please add your Anthropic API key to enable document generation.');
+    return;
+  }
+  const job = JOBS.find(j => j != null && j.id === jobId);
+  if (!job) return;
+
+  const btn = document.getElementById(`gen-docs-btn-${jobId}`);
+  const setBtn = (label, disabled) => {
+    btn.textContent = label;
+    btn.disabled = disabled;
+    btn.classList.toggle('is-loading', disabled);
+  };
+
+  setBtn('⏳ Fetching job...', true);
+
+  const prompt = `You are a professional resume writer.
+
+First, fetch and read the full job description from this URL: ${job.url}
+
+Then tailor my resume for this specific role based on the ACTUAL job requirements you find.
+
+JOB CONTEXT:
+Company: ${job.company}
+Role: ${job.role}
+Location: ${job.location}
+Salary: ${job.salary || 'Not listed'}
+URL: ${job.url}
+
+MY BASE RESUME:
+SARIK ENG
+Richmond, BC | 236-513-1896 | sarikc2@gmail.com | Permanent Resident of Canada
+
+PROFESSIONAL SUMMARY
+Client-focused banking and financial services professional with 7+ years of front-line experience building customer relationships, explaining complex financial processes, and delivering solutions across regulated environments. Currently completing the Canadian Securities Course (CSC) — Exam 1 passed, Exam 2 scheduled June 2026; CPH in progress. Certified in Federal Income Tax (H&R Block, 2025). Hands-on investor across equities, ETFs, and crypto. MBA (Distinction). Trilingual: English, Khmer, French.
+
+EXPERIENCE
+Tax Preparer & Customer Representative | Dhiman & Company Inc., Richmond, BC | Jan 2026 – May 2026
+- Guided clients through complex regulated CRA filing processes via phone and email
+- Applied legislation to assess eligibility, prepare T1/T2 returns and GST/HST reconciliations
+- Maintained audit-ready documentation under strict confidentiality standards
+
+Customer Service Representative | TLC Healthcare Services Inc., Parksville, BC | Oct 2023 – Dec 2025
+- Managed 50+ daily client interactions via phone and in-person in a regulated environment
+- Maintained patient records across two regulated platforms (Kroll, ImmsBC)
+- Exercised good judgement in confidential matters with diverse client backgrounds
+
+Sales Associate | Running Room, Richmond, BC | Oct 2024 – Dec 2025
+- Operated store independently; assessed individual customer needs and delivered tailored recommendations
+- Built repeat customer relationships through consistent, knowledgeable service
+
+Sales Associate | The Home Depot, West Vancouver & Nanaimo, BC | Mar 2022 – Oct 2025
+- Provided in-person, phone, and online customer support in high-volume retail environment
+- Used internal systems for order management and inventory tracking daily
+
+Store Manager | Two Roads Retail Specialist Inc., West Vancouver, BC | Aug – Oct 2023
+- Led day-to-day operations including staff scheduling, performance reviews, and sales reporting
+- Promoted digital data capture at point of sale above company average
+
+Sales & Marketing Manager | Vattanac Properties, Phnom Penh, Cambodia | Jan – Dec 2021
+- Managed B2B and B2C client accounts through structured follow-up and relationship-building
+- Prepared budget proposals and collaborated cross-functionally with leadership
+
+Business Development Manager | Naki Group, Cambodia | Jun 2019 – Jan 2021
+- Built client and vendor portfolio from launch; negotiated multi-region contracts
+- Trained internal team on client service standards
+
+Sales Manager | AboutAsia Travel, Siem Reap, Cambodia | Jan 2014 – Oct 2016
+- Sold customized packages to international clients via phone and email
+- Resolved complaints and refund requests with discretion
+
+EDUCATION
+MBA (Distinction) | University Canada West, Vancouver, BC | 2022–2023
+Master of Tourism Management | Victoria University of Wellington, NZ | 2017–2019
+Bachelor of Business Administration | National University of Management, Cambodia | 2007–2011
+
+CERTIFICATIONS
+- CSC Exam 1 passed; Exam 2 June 2026
+- Federal Income Tax Level 1 — H&R Block (2025)
+- MS Office Suite: Word, Excel (Advanced), Outlook
+- CRM: Zoho CRM, Kroll, ImmsBC; Trilingual: English, Khmer, French
+
+After reading the actual job description, return ONLY valid JSON, no markdown, no explanation:
+{
+  "job_requirements_found": "2-3 sentence summary of what the actual job requires",
+  "summary": "3-sentence tailored professional summary using actual keywords from the job description",
+  "competencies": ["skill 1","skill 2","skill 3","skill 4","skill 5","skill 6","skill 7","skill 8","skill 9","skill 10"],
+  "experience": {
+    "Dhiman & Company Inc.": ["bullet 1","bullet 2","bullet 3"],
+    "TLC Healthcare Services Inc.": ["bullet 1","bullet 2","bullet 3"],
+    "Running Room": ["bullet 1","bullet 2"],
+    "The Home Depot": ["bullet 1"],
+    "Two Roads Retail Specialist Inc.": ["bullet 1","bullet 2"],
+    "Vattanac Properties": ["bullet 1"],
+    "Naki Group": ["bullet 1"],
+    "AboutAsia Travel": ["bullet 1"]
+  },
+  "cover_letter": ["paragraph 1","paragraph 2","paragraph 3"]
+}
+
+Rules:
+- MUST read the actual job posting before tailoring — do not guess requirements
+- Never invent credentials or experience not in the base resume
+- Mirror the actual job description keywords naturally
+- Cover letter: max 250 words, 3 paragraphs — opening with role+company+fit, relevant skills, confident closing with call to action
+- Bullets: concise, achievement-focused, under 2 lines each
+- If you cannot fetch the URL, return: {"error": "Could not fetch job description"}`;
+
+  let data;
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'interleaved-thinking-2025-05-14'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 3000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    data = await res.json();
+  } catch (e) {
+    setBtn('📄 Generate Docs', false);
+    alert('Network error — check your connection and try again.');
+    return;
+  }
+
+  setBtn('⏳ Tailoring...', true);
+
+  const textBlock = (data.content || []).filter(b => b.type === 'text').pop();
+  if (!textBlock) {
+    setBtn('📄 Generate Docs', false);
+    alert('Unexpected API response — check your API key and try again.');
+    return;
+  }
+
+  let parsed;
+  try {
+    let raw = textBlock.text.trim().replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+    parsed = JSON.parse(raw);
+  } catch {
+    setBtn('📄 Generate Docs', false);
+    alert('Could not parse tailored content. Try again.');
+    return;
+  }
+
+  setBtn('📄 Generate Docs', false);
+  showGenDocsModal(job, parsed.error ? null : parsed, parsed.error || null);
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+
+(function injectGenDocsModal() {
+  const modal = document.createElement('div');
+  modal.id = 'gen-docs-modal';
+  modal.style.cssText = 'display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.72);align-items:center;justify-content:center;';
+  modal.onclick = e => { if (e.target === modal) closeGenDocsModal(); };
+  modal.innerHTML = `
+    <div style="background:#111827;border:1px solid rgba(255,255,255,0.1);border-radius:10px;width:min(660px,92vw);max-height:88vh;overflow-y:auto;padding:28px 32px;position:relative;box-shadow:0 24px 64px rgba(0,0,0,0.6);">
+      <button onclick="closeGenDocsModal()" style="position:absolute;top:14px;right:18px;background:none;border:none;color:#9ca3af;font-size:1.4rem;cursor:pointer;line-height:1;">×</button>
+      <div style="margin-bottom:18px;">
+        <div id="gdm-title" style="font-size:1.05rem;font-weight:700;color:#f9fafb;margin-bottom:4px;"></div>
+        <div id="gdm-company" style="font-size:0.82rem;color:#6b7280;"></div>
+      </div>
+      <div id="gdm-error" style="display:none;color:#f87171;font-size:0.88rem;padding:14px;background:rgba(239,68,68,0.08);border-radius:6px;margin-bottom:16px;"></div>
+      <div id="gdm-body" style="display:none;">
+        <div style="margin-bottom:16px;">
+          <div style="font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#2dd4bf;margin-bottom:6px;">What This Role Requires</div>
+          <div id="gdm-requirements" style="font-size:0.88rem;color:#d1d5db;line-height:1.6;background:rgba(45,212,191,0.05);border-left:2px solid rgba(45,212,191,0.4);padding:10px 14px;border-radius:0 4px 4px 0;"></div>
+        </div>
+        <div style="margin-bottom:22px;">
+          <div style="font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Tailored Summary Preview</div>
+          <div id="gdm-summary" style="font-size:0.88rem;color:#d1d5db;line-height:1.6;font-style:italic;"></div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button id="gdm-dl-resume" onclick="downloadDocxResume()" style="flex:1;min-width:200px;padding:10px 16px;background:rgba(45,212,191,0.1);border:1px solid rgba(45,212,191,0.4);color:#2dd4bf;border-radius:5px;font-size:0.75rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:background 0.15s;">⬇ Resume</button>
+          <button id="gdm-dl-cl" onclick="downloadDocxCoverLetter()" style="flex:1;min-width:200px;padding:10px 16px;background:rgba(45,212,191,0.1);border:1px solid rgba(45,212,191,0.4);color:#2dd4bf;border-radius:5px;font-size:0.75rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:background 0.15s;">⬇ Cover Letter</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+})();
+
+let _gdmJob = null;
+let _gdmParsed = null;
+
+function showGenDocsModal(job, parsed, errorMsg) {
+  _gdmJob = job;
+  _gdmParsed = parsed;
+
+  document.getElementById('gdm-title').textContent = job.role;
+  document.getElementById('gdm-company').textContent =
+    job.company + (job.location ? '  ·  ' + job.location : '');
+
+  const errEl  = document.getElementById('gdm-error');
+  const bodyEl = document.getElementById('gdm-body');
+
+  if (errorMsg) {
+    errEl.textContent = 'Could not fetch job description from this URL: ' + errorMsg;
+    errEl.style.display = 'block';
+    bodyEl.style.display = 'none';
+  } else {
+    errEl.style.display = 'none';
+    bodyEl.style.display = 'block';
+    document.getElementById('gdm-requirements').textContent = parsed.job_requirements_found || '';
+    document.getElementById('gdm-summary').textContent = parsed.summary || '';
+    const slug = docxSlug(job.company, job.role);
+    document.getElementById('gdm-dl-resume').textContent = `⬇ Resume-Sarik-Eng-${slug}.docx`;
+    document.getElementById('gdm-dl-cl').textContent     = `⬇ Cover-Letter-Sarik-Eng-${slug}.docx`;
+  }
+
+  const modal = document.getElementById('gen-docs-modal');
+  modal.style.display = 'flex';
+}
+
+function closeGenDocsModal() {
+  document.getElementById('gen-docs-modal').style.display = 'none';
+}
+
+function docxSlug(company, role) {
+  return [company, role]
+    .join('-')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 60);
+}
+
+function triggerDownload(blob, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+// ── docx builders ─────────────────────────────────────────────────────────────
+
+const _EXP_META = [
+  { key: 'Dhiman & Company Inc.',          title: 'Tax Preparer & Customer Representative (Contract Full-time)', loc: 'Dhiman & Company Inc., Richmond, BC',                      dates: 'Jan 2026 – May 2026'    },
+  { key: 'TLC Healthcare Services Inc.',   title: 'Customer Service Representative (Full-time)',                 loc: 'TLC Healthcare Services Inc., Parksville, BC',             dates: 'Oct 2023 – Dec 2025'    },
+  { key: 'Running Room',                   title: 'Sales Associate (Part-Time)',                                 loc: 'Running Room, Richmond, BC',                               dates: 'Oct 2024 – Dec 2025'    },
+  { key: 'The Home Depot',                 title: 'Sales Associate (Part-Time)',                                 loc: 'The Home Depot, West Vancouver & Nanaimo, BC',             dates: 'Mar 2022 – Oct 2025'    },
+  { key: 'Two Roads Retail Specialist Inc.', title: 'Store Manager (Seasonal)',                                  loc: 'Two Roads Retail Specialist Inc., West Vancouver, BC',     dates: 'Aug – Oct 2023'         },
+  { key: 'Vattanac Properties',            title: 'Sales & Marketing Manager (Full-time)',                       loc: 'Vattanac Properties (The Atom), Phnom Penh, Cambodia',     dates: 'Jan – Dec 2021'         },
+  { key: 'Naki Group',                     title: 'Business Development Manager (Full-time)',                    loc: 'Naki Group (Cira Arthika Tourism), Cambodia',               dates: 'Jun 2019 – Jan 2021'    },
+  { key: 'AboutAsia Travel',               title: 'Sales Manager (Full-time)',                                   loc: 'AboutAsia Travel, Siem Reap, Cambodia',                     dates: 'Jan 2014 – Oct 2016'    },
+];
+
+async function downloadDocxResume() {
+  if (!_gdmJob || !_gdmParsed) return;
+  const { Document, Packer, Paragraph, TextRun, AlignmentType,
+          Table, TableRow, TableCell, WidthType, BorderStyle } = window.docx;
+
+  const p = _gdmParsed;
+  const exp = p.experience || {};
+
+  const noBorder = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
+  const allNoBorder = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideH: noBorder, insideV: noBorder };
+
+  function sHead(text) {
+    return new Paragraph({
+      children: [new TextRun({ text, bold: true, size: 22, color: '1a237e' })],
+      thematicBreak: true,
+      spacing: { before: 240, after: 80 },
+    });
+  }
+
+  const comps = p.competencies || [];
+  const tableRows = [];
+  for (let i = 0; i < comps.length; i += 2) {
+    tableRows.push(new TableRow({ children: [
+      new TableCell({ borders: allNoBorder, width: { size: 50, type: WidthType.PERCENTAGE },
+        children: [new Paragraph({ children: [new TextRun({ text: `▪  ${comps[i] || ''}`, size: 19 })] })] }),
+      new TableCell({ borders: allNoBorder, width: { size: 50, type: WidthType.PERCENTAGE },
+        children: [new Paragraph({ children: [new TextRun({ text: comps[i+1] ? `▪  ${comps[i+1]}` : '', size: 19 })] })] }),
+    ]}));
+  }
+
+  const children = [
+    new Paragraph({ alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: 'SARIK ENG', bold: true, size: 40, color: '1a237e' })],
+      spacing: { after: 60 } }),
+    new Paragraph({ alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: 'Richmond, BC  ·  236-513-1896  ·  sarikc2@gmail.com  ·  Permanent Resident of Canada', size: 18, color: '555555' })],
+      spacing: { after: 200 } }),
+
+    sHead('PROFESSIONAL SUMMARY'),
+    new Paragraph({ text: p.summary || '', spacing: { after: 160 } }),
+
+    sHead('CORE COMPETENCIES'),
+    ...(tableRows.length ? [new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: tableRows }),
+      new Paragraph({ text: '', spacing: { after: 80 } })] : []),
+
+    sHead('PROFESSIONAL EXPERIENCE'),
+    ..._EXP_META.flatMap(e => {
+      const bullets = exp[e.key] || [];
+      if (!bullets.length) return [];
+      return [
+        new Paragraph({ children: [new TextRun({ text: `${e.title}  |  ${e.loc}`, bold: true, size: 20 })], spacing: { before: 140, after: 40 } }),
+        new Paragraph({ children: [new TextRun({ text: e.dates, italics: true, size: 19, color: '555555' })], spacing: { after: 60 } }),
+        ...bullets.map(b => new Paragraph({ children: [new TextRun({ text: `•  ${b}`, size: 19 })], indent: { left: 360 }, spacing: { after: 60 } })),
+      ];
+    }),
+
+    sHead('EDUCATION & TRAINING'),
+    ...[
+      'MBA (Distinction)  |  University Canada West, Vancouver, BC  |  Jan 2022 – Jul 2023',
+      'Web Development Bootcamp  |  BrainStation, Vancouver, BC  |  Apr – Jun 2023',
+      'Master of Tourism Management  |  Victoria University of Wellington, NZ  |  Mar 2017 – Apr 2019  (NZ Government Scholarship)',
+      'Bachelor of Business Administration  |  National University of Management, Cambodia  |  Sep 2007 – Oct 2011',
+    ].map(t => new Paragraph({ text: t, spacing: { after: 80 } })),
+
+    sHead('CERTIFICATIONS & FINANCIAL KNOWLEDGE'),
+    ...[
+      'Canadian Securities Course (CSC): Exam 1 passed; Exam 2 scheduled June 2026',
+      'Federal Income Tax Level 1 — H&R Block (Completed December 2025)',
+      'MS Office Suite: Word, Excel (Advanced), Outlook — daily professional use',
+      'CRM & Platforms: Zoho CRM, Kroll, ImmsBC; Trilingual: English, Khmer, French',
+    ].map(t => new Paragraph({ children: [new TextRun({ text: `•  ${t}`, size: 19 })], indent: { left: 360 }, spacing: { after: 60 } })),
+  ];
+
+  const doc = new Document({ sections: [{ children }] });
+  const blob = await Packer.toBlob(doc);
+  triggerDownload(blob, `Resume-Sarik-Eng-${docxSlug(_gdmJob.company, _gdmJob.role)}.docx`);
+}
+
+async function downloadDocxCoverLetter() {
+  if (!_gdmJob || !_gdmParsed) return;
+  const { Document, Packer, Paragraph, TextRun, AlignmentType } = window.docx;
+
+  const today = new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' });
+  const paras = _gdmParsed.cover_letter || [];
+
+  const children = [
+    new Paragraph({ alignment: AlignmentType.RIGHT,
+      children: [new TextRun({ text: today, size: 20 })], spacing: { after: 280 } }),
+    new Paragraph({ children: [new TextRun({ text: 'Hiring Manager', bold: true })], spacing: { after: 40 } }),
+    new Paragraph({ children: [new TextRun({ text: _gdmJob.company })], spacing: { after: 40 } }),
+    new Paragraph({ children: [new TextRun({ text: _gdmJob.location || '' })], spacing: { after: 280 } }),
+    new Paragraph({ children: [new TextRun({ text: `Re: ${_gdmJob.role}`, italics: true })], spacing: { after: 280 } }),
+    ...paras.map(p => new Paragraph({ text: p, spacing: { after: 200 } })),
+    new Paragraph({ text: 'Sincerely,', spacing: { before: 280, after: 280 } }),
+    new Paragraph({ children: [new TextRun({ text: 'Sarik Eng', bold: true })], spacing: { after: 60 } }),
+    new Paragraph({ text: '236-513-1896  |  sarikc2@gmail.com' }),
+  ];
+
+  const doc = new Document({ sections: [{ children }] });
+  const blob = await Packer.toBlob(doc);
+  triggerDownload(blob, `Cover-Letter-Sarik-Eng-${docxSlug(_gdmJob.company, _gdmJob.role)}.docx`);
+}
 </script>
 </body>
 </html>
