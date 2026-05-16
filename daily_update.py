@@ -403,13 +403,14 @@ def _is_direct_job_url(url: str) -> bool:
     if re.search(r'/search[-_]results?', u):
         return False
     if re.search(r'/jobs?/\d{4,}', u):                    return True
-    if re.search(r'[?&](jk|jid|jobid|job_id|job-id|req_id|requisition_id|posting_id)=\w+', u): return True
+    if re.search(r'[?&](jk|jid|jobid|job_id|job-id|req_id|requisition_id|posting_id|opportunityid)=\w+', u): return True
     if re.search(r'/posting/[a-z0-9-]{6,}', u):           return True
     if re.search(r'/opportunity/[a-z0-9-]{6,}', u):       return True
     if re.search(r'/viewjob\?', u):                        return True
     if re.search(r'linkedin\.com/jobs/view/', u):          return True
     if re.search(r'myworkdayjobs\.com.*/job/', u):         return True
-    if re.search(r'(lever|greenhouse|workable|breezy|talent)\.', u): return True
+    if re.search(r'(lever|greenhouse|workable|breezy|talent|jobs\.ca)\.', u): return True
+    if re.search(r'/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', u): return True  # UUID paths
     if re.search(r'/\d{5,}', u):                           return True
     return False
 
