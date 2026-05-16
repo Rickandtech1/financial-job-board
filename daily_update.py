@@ -10,6 +10,8 @@ Usage (GitHub Actions sets env vars automatically):
 
 import json, os, re, sys, time, tempfile, subprocess, datetime, urllib.request, urllib.error, base64
 import requests
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 
 # ── Config ────────────────────────────────────────────────────────────────────
 APIFY_TOKEN    = os.environ.get("APIFY_TOKEN", "")
