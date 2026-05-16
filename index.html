@@ -4625,12 +4625,12 @@ const _EXP_META = [
 async function downloadDocxResume() {
   if (!_gdmJob || !_gdmParsed) return;
   const { Document, Packer, Paragraph, TextRun, AlignmentType,
-          Table, TableRow, TableCell, WidthType, BorderStyle } = window.docx;
+          Table, TableRow, TableCell, WidthType } = window.docx;
 
   const p = _gdmParsed;
   const exp = p.experience || {};
 
-  const noBorder = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
+  const noBorder = { style: 'none', size: 0, color: 'FFFFFF' };
   const allNoBorder = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideH: noBorder, insideV: noBorder };
 
   function sHead(text) {
