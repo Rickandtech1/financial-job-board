@@ -123,20 +123,31 @@ def is_job_active(item: dict) -> bool:
     return True
 
 
+def _s(val) -> str:
+    """Safely coerce any Apify field value (str, list, dict, None) to a plain string."""
+    if val is None:
+        return ""
+    if isinstance(val, list):
+        return ", ".join(str(v) for v in val if v)
+    if isinstance(val, dict):
+        return val.get("text") or val.get("label") or val.get("value") or str(val)
+    return str(val)
+
+
 def normalize(item: dict, source: str) -> dict:
     """Convert a raw Apify item into our standard job dict."""
-    title    = (item.get("title") or item.get("positionName") or
-                item.get("jobTitle") or item.get("name") or "").strip()
-    company  = (item.get("company") or item.get("companyName") or
-                item.get("employer") or item.get("organizationName") or "").strip()
-    location = (item.get("location") or item.get("jobLocation") or
-                item.get("city") or "").strip()
-    salary   = (item.get("salary") or item.get("salaryRange") or
-                item.get("compensation") or "").strip()
-    desc     = (item.get("description") or item.get("jobDescription") or
-                item.get("body") or item.get("text") or "")
+    title    = _s(item.get("title") or item.get("positionName") or
+                  item.get("jobTitle") or item.get("name")).strip()
+    company  = _s(item.get("company") or item.get("companyName") or
+                  item.get("employer") or item.get("organizationName")).strip()
+    location = _s(item.get("location") or item.get("jobLocation") or
+                  item.get("city")).strip()
+    salary   = _s(item.get("salary") or item.get("salaryRange") or
+                  item.get("compensation")).strip()
+    desc     = _s(item.get("description") or item.get("jobDescription") or
+                  item.get("body") or item.get("text"))
     url_val  = extract_url(item)
-    emp_type = (item.get("employmentType") or item.get("jobType") or "").strip()
+    emp_type = _s(item.get("employmentType") or item.get("jobType")).strip()
 
     # Arrangement
     arrangement = "On-site"
@@ -174,12 +185,15 @@ def scrape_all() -> list:
 
     # SOURCE 1: LinkedIn
     print("  LinkedIn ...", flush=True)
-    items = apify_post("bebity~linkedin-jobs-scraper", {
-        "title": ("investment representative OR financial services representative OR "
-                  "associate financial advisor OR investment associate OR "
-                  "associate wealth advisor OR customer experience associate"),
-        "location": "Vancouver, British Columbia, Canada",
-        "rows": 50,
+    _li_loc = "Vancouver%2C%20British%20Columbia%2C%20Canada"
+    items = apify_post("curious_coder~linkedin-jobs-scraper", {
+        "urls": [
+            f"https://www.linkedin.com/jobs/search/?keywords=investment+representative+OR+financial+services+representative&location={_li_loc}",
+            f"https://www.linkedin.com/jobs/search/?keywords=associate+financial+advisor+OR+investment+associate&location={_li_loc}",
+            f"https://www.linkedin.com/jobs/search/?keywords=customer+experience+associate+bank+OR+associate+wealth+advisor&location={_li_loc}",
+        ],
+        "count": 50,
+        "scrapeCompany": False,
     })
     items = [i for i in items if is_job_active(i)]
     print(f"  After expiry filter: {len(items)} LinkedIn items", flush=True)
