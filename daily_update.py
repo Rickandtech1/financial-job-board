@@ -9,6 +9,7 @@ Usage (GitHub Actions sets env vars automatically):
 """
 
 import json, os, re, sys, time, tempfile, subprocess, datetime, urllib.request, urllib.error, base64
+import requests
 
 # ── Config ────────────────────────────────────────────────────────────────────
 APIFY_TOKEN    = os.environ.get("APIFY_TOKEN", "")
@@ -373,6 +374,73 @@ CREDIT_UNIONS = {"vancity", "coast capital", "first west", "blueshore", "prosper
 BOUTIQUES = {"raymond james", "canaccord", "edward jones", "manulife", "ig wealth",
              "aviso", "desjardins", "national bank"}
 
+EXPIRED_PHRASES = [
+    'no longer accepting applications',
+    'this position has been filled',
+    'this opportunity is currently not available',
+    'has expired',
+    'job has expired',
+    'position is no longer available',
+    'this job is no longer available',
+    'posting has expired',
+    'requisition is no longer active',
+    'this job posting has closed',
+]
+
+_REQUEST_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+}
+
+
+def _is_direct_job_url(url: str) -> bool:
+    """Return True if the URL looks like a specific job posting (worth checking for expiry)."""
+    if not url:
+        return False
+    u = url.lower()
+    if re.search(r'/(careers|jobs|job-search|current-opportunities|open-positions|work-with-us)/?(\?[^/]*)?$', u):
+        return False
+    if re.search(r'/search[-_]results?', u):
+        return False
+    if re.search(r'/jobs?/\d{4,}', u):                    return True
+    if re.search(r'[?&](jk|jid|jobid|job_id|job-id|req_id|requisition_id|posting_id)=\w+', u): return True
+    if re.search(r'/posting/[a-z0-9-]{6,}', u):           return True
+    if re.search(r'/opportunity/[a-z0-9-]{6,}', u):       return True
+    if re.search(r'/viewjob\?', u):                        return True
+    if re.search(r'linkedin\.com/jobs/view/', u):          return True
+    if re.search(r'myworkdayjobs\.com.*/job/', u):         return True
+    if re.search(r'(lever|greenhouse|workable|breezy)\.', u): return True
+    if re.search(r'/\d{5,}', u):                           return True
+    return False
+
+
+def _check_url_active(url: str) -> tuple:
+    """Return (is_active, reason). False means the job is expired or gone."""
+    try:
+        resp = requests.get(url, headers=_REQUEST_HEADERS, timeout=10, allow_redirects=True)
+
+        if resp.status_code in (404, 410):
+            return False, f"HTTP {resp.status_code}"
+
+        if resp.status_code >= 400:
+            return True, f"HTTP {resp.status_code} (keeping)"
+
+        # Redirected to a generic page?
+        if resp.url.rstrip('/') != url.rstrip('/'):
+            final = resp.url.lower().rstrip('/')
+            if re.search(r'/(careers|jobs|search|404|not.found|home|error)$', final):
+                return False, f"Redirected to generic page: {resp.url}"
+
+        body = resp.text[:60000].lower()
+        for phrase in EXPIRED_PHRASES:
+            if phrase in body:
+                return False, f"Expired phrase: '{phrase}'"
+
+        return True, "OK"
+    except requests.exceptions.Timeout:
+        return True, "Timeout (keeping)"
+    except Exception as e:
+        return True, f"Check failed ({e}), keeping"
+
 
 def parse_salary(text: str) -> float:
     """Return the lower bound of a salary string in CAD, or 0."""
@@ -545,6 +613,25 @@ def make_hook(company: str, role: str) -> str:
 def make_logo(company: str) -> str:
     words = re.sub(r"[^A-Za-z ]", "", company).split()
     return "".join(w[0].upper() for w in words[:2]) if words else "??"
+
+
+def verify_job_urls(jobs: list) -> list:
+    """HTTP-check each new job's URL; drop jobs whose page shows expiry signals."""
+    if not jobs:
+        return jobs
+    verified = []
+    for job in jobs:
+        url = job.get('url', '')
+        if not url or not _is_direct_job_url(url):
+            verified.append(job)
+            continue
+        active, reason = _check_url_active(url)
+        if active:
+            verified.append(job)
+        else:
+            print(f"  [SKIP] Expired: {job['company']} — {job['role']} ({reason})", flush=True)
+        time.sleep(0.5)
+    return verified
 
 
 # ── Deduplication ─────────────────────────────────────────────────────────────
@@ -1172,6 +1259,53 @@ def remove_stale_jobs(html_path: str) -> int:
     return removed
 
 
+def remove_expired_existing_jobs(html_path: str) -> int:
+    """Check existing job URLs for expiry signals; remove expired jobs not in pipeline."""
+    with open(html_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    removed = 0
+
+    def check_and_remove(m):
+        nonlocal removed
+        block = m.group(0)
+
+        status_m = re.search(r'status:\s*"([^"]+)"', block)
+        status = status_m.group(1) if status_m else 'To Apply'
+        if status in ('Applied', 'Interview', 'Offer'):
+            return block
+
+        url_m = re.search(r'\n\s+url:\s*"([^"]*)"', block)
+        url = url_m.group(1) if url_m else ''
+        if not url or not _is_direct_job_url(url):
+            return block
+
+        active, reason = _check_url_active(url)
+        time.sleep(0.3)
+
+        if not active:
+            co_m = re.search(r'company:\s*"([^"]+)"', block)
+            ro_m = re.search(r'role:\s*"([^"]+)"', block)
+            company = co_m.group(1) if co_m else '?'
+            role    = ro_m.group(1) if ro_m else '?'
+            print(f"  [SKIP] Expired existing: {company} — {role} ({reason})", flush=True)
+            removed += 1
+            return ''
+
+        return block
+
+    new_content = re.sub(r'\n  \{[\s\S]*?\n  \},', check_and_remove, content)
+
+    if removed > 0:
+        with open(html_path, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+        print(f"  [INFO] Removed {removed} expired existing job(s)", flush=True)
+    else:
+        print("  [INFO] All checked existing job URLs still active", flush=True)
+
+    return removed
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
@@ -1187,6 +1321,10 @@ def main():
     # Step 0: Remove stale jobs (daysAgo > 45, not in pipeline)
     print("\n[STEP 0] Removing stale jobs ...", flush=True)
     remove_stale_jobs(JOB_BOARD_PATH)
+
+    # Step 0b: HTTP-check existing job URLs and remove expired ones
+    print("\n[STEP 0b] Checking existing job URLs for expiry ...", flush=True)
+    remove_expired_existing_jobs(JOB_BOARD_PATH)
 
     # Step 1: Scrape
     raw_jobs = scrape_all()
@@ -1237,6 +1375,11 @@ def main():
         })
 
     print(f"  New qualifying jobs: {len(new_jobs)}", flush=True)
+
+    # Step 3b: HTTP-verify new job URLs are still active
+    print("\n[STEP 3b] Verifying job URLs are still active ...", flush=True)
+    new_jobs = verify_job_urls(new_jobs)
+    print(f"  {len(new_jobs)} jobs verified active", flush=True)
 
     # Step 4: Append to HTML
     print("\n[STEP 5] Updating index.html ...", flush=True)
