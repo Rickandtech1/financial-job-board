@@ -1221,7 +1221,7 @@
     .btn-gen-docs:hover { background: rgba(45,212,191,0.15); border-color: rgba(45,212,191,0.7); }
     .btn-gen-docs.is-loading { opacity: 0.5; cursor: wait; }
   </style>
-  <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+  <script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
 </head>
 <body>
 
@@ -4623,11 +4623,10 @@ const _EXP_META = [
 ];
 
 async function downloadDocxResume() {
-  console.log('window.docx:', window.docx);
   if (!_gdmJob || !_gdmParsed) return;
   try {
   const { Document, Packer, Paragraph, TextRun, AlignmentType,
-          Table, TableRow, TableCell, WidthType } = window.docx;
+          Table, TableRow, TableCell, WidthType } = docx;
 
   const p = _gdmParsed;
   const exp = p.experience || {};
@@ -4707,10 +4706,9 @@ async function downloadDocxResume() {
 }
 
 async function downloadDocxCoverLetter() {
-  console.log('window.docx:', window.docx);
   if (!_gdmJob || !_gdmParsed) return;
   try {
-  const { Document, Packer, Paragraph, TextRun, AlignmentType } = window.docx;
+  const { Document, Packer, Paragraph, TextRun, AlignmentType } = docx;
 
   const today = new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' });
   const paras = _gdmParsed.cover_letter || [];
