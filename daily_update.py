@@ -380,6 +380,7 @@ EXPIRED_PHRASES = [
     'this opportunity is currently not available',
     'this job has expired',
     'job has expired',
+    'job is no longer available',
     'position is no longer available',
     'this job is no longer available',
     'posting has expired',
@@ -1227,10 +1228,31 @@ def build_resume_package_email(jobs: list) -> str:
 
 # ── Stale job removal ─────────────────────────────────────────────────────────
 
+_JOB_BLOCK_RE = re.compile(r'\n  \{\n    id: \d+,[\s\S]*?\n  \},?')
+
+
+def _jobs_section(content: str):
+    """Return (jobs_text, pre, post) splitting content around the JOBS array.
+    Scopes all regex operations to the array only, preventing over-matching."""
+    start = content.find('const JOBS = [')
+    if start == -1:
+        return None, None, None
+    end_m = re.search(r'\n\];', content[start:])
+    if not end_m:
+        return None, None, None
+    end = start + end_m.end()
+    return content[start:end], content[:start], content[end:]
+
+
 def remove_stale_jobs(html_path: str) -> int:
-    """Remove jobs with daysAgo > 45 unless they're in the active pipeline. Returns count removed."""
+    """Remove jobs with daysAgo > 45 unless they're in the active pipeline."""
     with open(html_path, 'r', encoding='utf-8') as f:
         content = f.read()
+
+    jobs, pre, post = _jobs_section(content)
+    if jobs is None:
+        print("  [WARN] JOBS array not found — skipping stale removal", flush=True)
+        return 0
 
     removed = 0
 
@@ -1247,11 +1269,11 @@ def remove_stale_jobs(html_path: str) -> int:
             return ''
         return block
 
-    new_content = re.sub(r'\n  \{[\s\S]*?\n  \},', check_block, content)
+    new_jobs = _JOB_BLOCK_RE.sub(check_block, jobs)
 
     if removed > 0:
         with open(html_path, 'w', encoding='utf-8') as f:
-            f.write(new_content)
+            f.write(pre + new_jobs + post)
         print(f"  [INFO] Removed {removed} stale job(s) (daysAgo > 45, status: To Apply)", flush=True)
     else:
         print("  [INFO] No stale jobs to remove", flush=True)
@@ -1263,6 +1285,11 @@ def remove_expired_existing_jobs(html_path: str) -> int:
     """Check existing job URLs for expiry signals; remove expired jobs not in pipeline."""
     with open(html_path, 'r', encoding='utf-8') as f:
         content = f.read()
+
+    jobs, pre, post = _jobs_section(content)
+    if jobs is None:
+        print("  [WARN] JOBS array not found — skipping expiry check", flush=True)
+        return 0
 
     removed = 0
 
@@ -1294,11 +1321,11 @@ def remove_expired_existing_jobs(html_path: str) -> int:
 
         return block
 
-    new_content = re.sub(r'\n  \{[\s\S]*?\n  \},', check_and_remove, content)
+    new_jobs = _JOB_BLOCK_RE.sub(check_and_remove, jobs)
 
     if removed > 0:
         with open(html_path, 'w', encoding='utf-8') as f:
-            f.write(new_content)
+            f.write(pre + new_jobs + post)
         print(f"  [INFO] Removed {removed} expired existing job(s)", flush=True)
     else:
         print("  [INFO] All checked existing job URLs still active", flush=True)
