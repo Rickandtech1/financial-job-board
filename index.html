@@ -450,6 +450,7 @@
       flex-direction: column;
       transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s;
       animation: cardIn 0.45s ease both;
+      position: relative;
     }
 
     .job-card:hover {
@@ -464,6 +465,33 @@
     }
     .job-card.is-dealbreaker:hover {
       border-color: rgba(180, 50, 50, 0.45);
+    }
+
+    .btn-remove-card {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: transparent;
+      color: rgba(255,255,255,0.3);
+      font-size: 0.65rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: all 0.15s;
+    }
+    .job-card:hover .btn-remove-card {
+      opacity: 1;
+    }
+    .btn-remove-card:hover {
+      background: rgba(239,68,68,0.2);
+      border-color: rgba(239,68,68,0.5);
+      color: #f87171;
     }
 
     /* Dealbreaker top banner */
@@ -3539,6 +3567,7 @@ function renderCard(job, idx) {
        data-signals="${job.signals.join(' ').toLowerCase()}"
        onmouseenter="hlCo(this)" onmouseleave="unhlCo()"
        style="--co-rgb:${_hexRgb(_companyColorMap[job.company]||'#8888AA')};animation-delay:${idx * 0.055}s;background:linear-gradient(to right,rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0.45) 0%,rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0.10) 30%,rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0) 55%);border-left:4px solid ${_companyColorMap[job.company]||'#8888AA'}">
+    <button class="btn-remove-card" onclick="removeCard(${job.id}); event.stopPropagation();" title="Remove this job">✕</button>
     ${dbBanner}
     <div class="card-body">
       <div class="card-top">
@@ -3651,6 +3680,7 @@ function getFiltered() {
   const sort   = document.getElementById('js-sort').value;
 
   let list = JOBS.filter(j => {
+    if (!j || j.status === 'Removed') return false;
     const matchQ   = !q || j.company.toLowerCase().includes(q) || j.role.toLowerCase().includes(q) || j.signals.some(s => s.toLowerCase().includes(q));
     const matchSt  = status === 'all' || j.status === status;
     const matchFit = !fitMin || j.fitScore >= 70;
@@ -3749,6 +3779,34 @@ function savePipelineToStorage() {
     Offer:     JOBS.filter(j => j != null && j.status === 'Offer').map(j => j.id),
   };
   localStorage.setItem(PIPELINE_KEY, JSON.stringify(pipeline));
+}
+
+function saveRemovedToStorage() {
+  const ids = JOBS.filter(j => j != null && j.status === 'Removed').map(j => j.id);
+  localStorage.setItem('jb_removed_v1', JSON.stringify(ids));
+}
+
+function loadRemovedFromStorage() {
+  try {
+    const ids = JSON.parse(localStorage.getItem('jb_removed_v1') || '[]');
+    ids.forEach(id => {
+      const job = JOBS.find(j => j != null && j.id === id);
+      if (job) job.status = 'Removed';
+    });
+  } catch(e) {}
+}
+
+function removeCard(jobId) {
+  if (!confirm('Remove this job from your board?')) return;
+  const job = JOBS.find(j => j != null && j.id === jobId);
+  if (!job) return;
+  job.status = 'Removed';
+  saveRemovedToStorage();
+  const sidebarItem = document.getElementById(`sidebar-item-${jobId}`);
+  if (sidebarItem) sidebarItem.remove();
+  updateSidebarVisibility();
+  updateStats();
+  refresh();
 }
 
 function loadPipelineFromStorage() {
@@ -3912,6 +3970,7 @@ document.addEventListener('DOMContentLoaded', () => {
   try {
     localStorage.removeItem(APPLIED_KEY);   // nuke legacy key only
     loadPipelineFromStorage();
+    loadRemovedFromStorage();
     // Rebuild all 3 sidebar sections from in-memory job statuses
     ['Applied', 'Interview', 'Offer'].forEach(status =>
       JOBS.filter(j => j != null && j.status === status).forEach(j => addToSidebar(j))
