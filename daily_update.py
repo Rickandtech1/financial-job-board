@@ -378,7 +378,7 @@ EXPIRED_PHRASES = [
     'no longer accepting applications',
     'this position has been filled',
     'this opportunity is currently not available',
-    'has expired',
+    'this job has expired',
     'job has expired',
     'position is no longer available',
     'this job is no longer available',
@@ -408,7 +408,7 @@ def _is_direct_job_url(url: str) -> bool:
     if re.search(r'/viewjob\?', u):                        return True
     if re.search(r'linkedin\.com/jobs/view/', u):          return True
     if re.search(r'myworkdayjobs\.com.*/job/', u):         return True
-    if re.search(r'(lever|greenhouse|workable|breezy)\.', u): return True
+    if re.search(r'(lever|greenhouse|workable|breezy|talent)\.', u): return True
     if re.search(r'/\d{5,}', u):                           return True
     return False
 
@@ -430,7 +430,7 @@ def _check_url_active(url: str) -> tuple:
             if re.search(r'/(careers|jobs|search|404|not.found|home|error)$', final):
                 return False, f"Redirected to generic page: {resp.url}"
 
-        body = resp.text[:60000].lower()
+        body = resp.text[:5000].lower()
         for phrase in EXPIRED_PHRASES:
             if phrase in body:
                 return False, f"Expired phrase: '{phrase}'"
