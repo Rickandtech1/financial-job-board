@@ -408,7 +408,7 @@ def _is_direct_job_url(url: str) -> bool:
     if re.search(r'/viewjob\?', u):                        return True
     if re.search(r'linkedin\.com/jobs/view/', u):          return True
     if re.search(r'myworkdayjobs\.com.*/job/', u):         return True
-    if re.search(r'(lever|greenhouse|workable|breezy|talent)\.', u): return True
+    if re.search(r'(lever|greenhouse|workable|breezy)\.', u): return True
     if re.search(r'/\d{5,}', u):                           return True
     return False
 
