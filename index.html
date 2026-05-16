@@ -156,6 +156,27 @@
       border-color: var(--gold);
     }
 
+    .btn-forget-key {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.58rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.22rem 0.7rem;
+      border-radius: 3px;
+      border: 1px solid var(--gold-dk);
+      background: transparent;
+      color: var(--gold-lt);
+      cursor: pointer;
+      transition: all 0.15s;
+      opacity: 0.4;
+    }
+    .btn-forget-key:hover {
+      opacity: 1;
+      background: rgba(200,169,81,0.08);
+      border-color: var(--gold);
+    }
+
     .header-date {
       font-family: 'Barlow Condensed', sans-serif;
       font-size: 0.7rem;
@@ -1238,6 +1259,7 @@
     <div class="header-right">
       <div class="header-date" id="js-date"></div>
       <button class="btn-export-pipeline" onclick="exportPipeline()" title="Download pipeline.json, then commit it to GitHub to save your progress">⬇ Export Pipeline</button>
+      <button class="btn-forget-key" onclick="forgetApiKey()" title="Clear stored API key from this session">🔑 Forget Key</button>
       <div class="cred-stack">
         <div class="cred-pill">CSC Exam 1 ✓ Passed</div>
         <div class="cred-pill">CSC Exam 2 · June 2026</div>
@@ -1354,8 +1376,32 @@
 
 <!-- ─────────────────────────────────────────────────────────────────────────── -->
 <script>
-// Add your Anthropic API key here to enable Generate Docs
-const ANTHROPIC_API_KEY = '';
+function getAnthropicKey() {
+  // Check sessionStorage first (user already entered it this session)
+  let key = sessionStorage.getItem('anthropic_key');
+  if (key) return key;
+
+  // Prompt user to enter key
+  key = prompt(
+    '🔑 Enter your Anthropic API key to generate documents.\n\n' +
+    'Your key will only be stored for this browser session and disappears when you close the tab.\n\n' +
+    'Get your key at: console.anthropic.com'
+  );
+
+  if (!key || !key.trim().startsWith('sk-ant-')) {
+    if (key !== null) alert('Invalid API key — must start with sk-ant-');
+    return null;
+  }
+
+  key = key.trim();
+  sessionStorage.setItem('anthropic_key', key);
+  return key;
+}
+
+function forgetApiKey() {
+  sessionStorage.removeItem('anthropic_key');
+  alert('API key cleared from this session.');
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MY PROFILE — pasted into every Apply Now prompt
@@ -4417,10 +4463,9 @@ function isDirectJobLink(url) {
 }
 
 async function generateDocs(jobId) {
-  if (!ANTHROPIC_API_KEY) {
-    alert('Please add your Anthropic API key to enable document generation.');
-    return;
-  }
+  const ANTHROPIC_API_KEY = getAnthropicKey();
+  if (!ANTHROPIC_API_KEY) return;
+
   const job = JOBS.find(j => j != null && j.id === jobId);
   if (!job) return;
 
