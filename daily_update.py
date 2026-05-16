@@ -174,18 +174,12 @@ def scrape_all() -> list:
 
     # SOURCE 1: LinkedIn
     print("  LinkedIn ...", flush=True)
-    items = apify_post("apify~linkedin-jobs-scraper", {
-        "queries": [
-            "investment representative Vancouver BC",
-            "financial services representative Vancouver",
-            "associate financial advisor Vancouver",
-            "investment associate Vancouver BC",
-            "associate wealth advisor Vancouver",
-            "customer experience associate bank Vancouver",
-            "customer experience representative credit union Vancouver",
-        ],
+    items = apify_post("bebity~linkedin-jobs-scraper", {
+        "title": ("investment representative OR financial services representative OR "
+                  "associate financial advisor OR investment associate OR "
+                  "associate wealth advisor OR customer experience associate"),
         "location": "Vancouver, British Columbia, Canada",
-        "maxResults": 50,
+        "rows": 50,
     })
     items = [i for i in items if is_job_active(i)]
     print(f"  After expiry filter: {len(items)} LinkedIn items", flush=True)
@@ -193,7 +187,7 @@ def scrape_all() -> list:
 
     # SOURCE 2: Indeed Canada
     print("  Indeed Canada ...", flush=True)
-    items = apify_post("apify~indeed-scraper", {
+    items = apify_post("misceres~indeed-scraper", {
         "country": "CA",
         "location": "Vancouver, BC",
         "position": ("investment representative OR financial services representative OR "
@@ -220,29 +214,24 @@ def scrape_all() -> list:
 
     # SOURCE 4: ZipRecruiter
     print("  ZipRecruiter ...", flush=True)
-    zr_input = {
-        "queries": [
-            "investment representative Vancouver BC",
-            "financial services representative Vancouver",
-            "associate financial advisor Vancouver BC",
-            "customer experience associate Vancouver BC",
-        ],
-        "location": "Vancouver, BC",
-        "maxItems": 40,
-    }
-    items = apify_post("apify~zip-recruiter-scraper", zr_input)
-    if not items:
-        items = apify_post("petr_cermak~ziprecruiter-scraper", zr_input)
-    if not items:
-        items = apify_post("apify~website-content-crawler", {
-            "startUrls": [
-                {"url": "https://www.ziprecruiter.com/jobs-search?search=investment+representative&location=Vancouver%2C+BC"},
-                {"url": "https://www.ziprecruiter.com/jobs-search?search=financial+services+representative&location=Vancouver%2C+BC"},
-                {"url": "https://www.ziprecruiter.com/jobs-search?search=customer+experience+associate+bank&location=Vancouver%2C+BC"},
-            ],
-            "maxCrawlDepth": 1,
+    zr_keywords = [
+        "investment representative",
+        "financial services representative",
+        "associate financial advisor",
+        "customer experience associate bank",
+    ]
+    zr_items = []
+    for kw in zr_keywords:
+        kw_items = apify_post("orgupdate~ziprecruiter-jobs-scraper", {
+            "includeKeyword": kw,
+            "locationName": "Vancouver, BC",
+            "countryName": "canada",
+            "jobType": "FULLTIME",
+            "datePosted": "month",
+            "pagesToFetch": 2,
         })
-    items = [i for i in items if is_job_active(i)]
+        zr_items += kw_items
+    items = [i for i in zr_items if is_job_active(i)]
     print(f"  After expiry filter: {len(items)} ZipRecruiter items", flush=True)
     raw += [normalize(i, "ZipRecruiter") for i in items]
 
@@ -271,8 +260,11 @@ def scrape_all() -> list:
         "bmo.wd3":        ("BMO Bank of Montreal", "BMO Careers"),
         "cibc.com":       ("CIBC",                 "CIBC Careers"),
     }
-    items = apify_post("apify~website-content-crawler", {
-        "startUrls": bank_pages, "maxCrawlDepth": 1})
+    items = apify_post("apify~cheerio-scraper", {
+        "startUrls": bank_pages,
+        "maxCrawlDepth": 1,
+        "pageFunction": "async function pageFunction(context) { const { $, request } = context; const jobs = []; $('a').each((i, el) => { const href = $(el).attr('href') || ''; const text = $(el).text().trim(); if (text.length > 4 && /job|career|position|role/i.test(href + ' ' + text)) { jobs.push({ url: href.startsWith('http') ? href : new URL(href, request.url).href, title: text, url: request.url }); } }); return jobs; }",
+    })
     items = [i for i in items if is_job_active(i)]
     print(f"  After expiry filter: {len(items)} Big 5 bank items", flush=True)
     for i in items:
@@ -323,8 +315,11 @@ def scrape_all() -> list:
     cu_keywords = {"investment", "financial", "representative", "advisor", "associate",
                    "wealth", "banking", "member service", "customer experience", "member advice"}
 
-    items = apify_post("apify~website-content-crawler", {
-        "startUrls": cu_start_urls, "maxCrawlDepth": 1})
+    items = apify_post("apify~cheerio-scraper", {
+        "startUrls": cu_start_urls,
+        "maxCrawlDepth": 1,
+        "pageFunction": "async function pageFunction(context) { const { $, request } = context; const jobs = []; $('a').each((i, el) => { const href = $(el).attr('href') || ''; const text = $(el).text().trim(); if (text.length > 4 && /job|career|position|role|opportunit/i.test(href + ' ' + text)) { jobs.push({ url: href.startsWith('http') ? href : new URL(href, request.url).href, title: text, url: request.url }); } }); return jobs; }",
+    })
     items = [i for i in items if is_job_active(i)]
     print(f"  After expiry filter: {len(items)} credit union items", flush=True)
     for i in items:
@@ -834,7 +829,7 @@ def git_commit_push(repo_dir: str, count: int):
     env["GIT_COMMITTER_NAME"]  = "Rickandtech1"
     env["GIT_COMMITTER_EMAIL"] = "rickandtech1@users.noreply.github.com"
 
-    subprocess.run(["git", "add", "job_board.html"], cwd=repo_dir, env=env, check=True)
+    subprocess.run(["git", "add", "index.html", "pipeline.json"], cwd=repo_dir, env=env, check=True)
     subprocess.run(["git", "commit", "-m", f"Daily update {TODAY}: {count} new roles"],
                    cwd=repo_dir, env=env, check=True)
 
