@@ -3498,7 +3498,7 @@ PLEASE DELIVER ALL OF THE FOLLOWING:
    STATS
 ═══════════════════════════════════════════════════════════════════════════ */
 function updateStats() {
-  const total      = JOBS.length;
+  const total      = JOBS.filter(j => j != null && j.status !== 'Removed').length;
   const applied    = JOBS.filter(j => j != null && j.status === 'Applied').length;
   const interviews = JOBS.filter(j => j != null && j.status === 'Interview').length;
   const clean      = JOBS.filter(j => j != null && !j.dealbreaker);
