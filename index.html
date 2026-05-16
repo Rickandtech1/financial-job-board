@@ -156,27 +156,6 @@
       border-color: var(--gold);
     }
 
-    .btn-forget-key {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.58rem;
-      font-weight: 600;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      padding: 0.22rem 0.7rem;
-      border-radius: 3px;
-      border: 1px solid var(--gold-dk);
-      background: transparent;
-      color: var(--gold-lt);
-      cursor: pointer;
-      transition: all 0.15s;
-      opacity: 0.4;
-    }
-    .btn-forget-key:hover {
-      opacity: 1;
-      background: rgba(200,169,81,0.08);
-      border-color: var(--gold);
-    }
-
     .header-date {
       font-family: 'Barlow Condensed', sans-serif;
       font-size: 0.7rem;
@@ -1259,7 +1238,6 @@
     <div class="header-right">
       <div class="header-date" id="js-date"></div>
       <button class="btn-export-pipeline" onclick="exportPipeline()" title="Download pipeline.json, then commit it to GitHub to save your progress">⬇ Export Pipeline</button>
-      <button class="btn-forget-key" onclick="forgetApiKey()" title="Clear stored API key from this session">🔑 Forget Key</button>
       <div class="cred-stack">
         <div class="cred-pill">CSC Exam 1 ✓ Passed</div>
         <div class="cred-pill">CSC Exam 2 · June 2026</div>
@@ -1376,33 +1354,6 @@
 
 <!-- ─────────────────────────────────────────────────────────────────────────── -->
 <script>
-function getAnthropicKey() {
-  // Check sessionStorage first (user already entered it this session)
-  let key = sessionStorage.getItem('anthropic_key');
-  if (key) return key;
-
-  // Prompt user to enter key
-  key = prompt(
-    '🔑 Enter your Anthropic API key to generate documents.\n\n' +
-    'Your key will only be stored for this browser session and disappears when you close the tab.\n\n' +
-    'Get your key at: console.anthropic.com'
-  );
-
-  if (!key || !key.trim().startsWith('sk-ant-')) {
-    if (key !== null) alert('Invalid API key — must start with sk-ant-');
-    return null;
-  }
-
-  key = key.trim();
-  sessionStorage.setItem('anthropic_key', key);
-  return key;
-}
-
-function forgetApiKey() {
-  sessionStorage.removeItem('anthropic_key');
-  alert('API key cleared from this session.');
-}
-
 /* ═══════════════════════════════════════════════════════════════════════════
    MY PROFILE — pasted into every Apply Now prompt
 ═══════════════════════════════════════════════════════════════════════════ */
@@ -4463,9 +4414,6 @@ function isDirectJobLink(url) {
 }
 
 async function generateDocs(jobId) {
-  const ANTHROPIC_API_KEY = getAnthropicKey();
-  if (!ANTHROPIC_API_KEY) return;
-
   const job = JOBS.find(j => j != null && j.id === jobId);
   if (!job) return;
 
@@ -4476,145 +4424,69 @@ async function generateDocs(jobId) {
     btn.classList.toggle('is-loading', disabled);
   };
 
-  setBtn('⏳ Fetching job...', true);
+  setBtn('⏳ Generating...', true);
 
-  const prompt = `You are a professional resume writer.
+  const signals = job.signals || [];
+  const isT1   = signals.some(s => s.includes('IR/FSR/FA'));
+  const isBig5 = signals.some(s => s.includes('Big 5'));
+  const isCU   = signals.some(s => s.includes('credit union'));
 
-First, fetch and read the full job description from this URL: ${job.url}
+  // First-person tailored summary from job-specific fields
+  const roleName = job.role.split('–')[0].split('(')[0].trim();
+  const coType   = isBig5 ? 'Big 5 bank' : isCU ? 'Metro Vancouver credit union' : 'financial services';
+  const summary  =
+    `Client-focused ${coType} professional with 7+ years of regulated, client-facing experience, ` +
+    `seeking the ${roleName} role at ${job.company}. Currently completing the Canadian Securities Course — ` +
+    `Exam 1 passed, Exam 2 scheduled June 2026; CPH in progress; Federal Income Tax certified (H&R Block, 2025). ` +
+    `MBA (Distinction, UCW 2023); trilingual in English, Khmer, and French; hands-on self-directed investor.`;
 
-Then tailor my resume for this specific role based on the ACTUAL job requirements you find.
+  // Competencies — CSC/advisory skills lead for T1 roles, client-service skills lead for support roles
+  const competencies = isT1 ? [
+    'Canadian Securities Course (CSC) — Exam 1 Passed; Exam 2 June 2026',
+    'Banking Solutions & Financial Products Awareness',
+    'Client Relationship Building & Needs Assessment',
+    'Regulatory Compliance & Confidentiality',
+    'Federal Income Tax Certified — H&R Block (2025)',
+    'Problem Resolution & Issue Escalation',
+    'Multi-Channel Client Service (Phone, Email, In-Person)',
+    'MS Office Suite: Word, Excel (Advanced), Outlook',
+    'CRM Platforms: Zoho CRM, Kroll, ImmsBC',
+    'Trilingual: English, Khmer, French',
+  ] : [
+    'Client Relationship Building & Needs Assessment',
+    'Multi-Channel Client Service (Phone, Email, In-Person)',
+    'Canadian Securities Course (CSC) — Exam 1 Passed; Exam 2 June 2026',
+    'Regulatory Compliance & Confidentiality',
+    'Cash & Non-Cash Transaction Support',
+    'Problem Resolution & Issue Escalation',
+    'Federal Income Tax Certified — H&R Block (2025)',
+    'MS Office Suite: Word, Excel (Advanced), Outlook',
+    'CRM Platforms: Zoho CRM, Kroll, ImmsBC',
+    'Trilingual: English, Khmer, French',
+  ];
 
-JOB CONTEXT:
-Company: ${job.company}
-Role: ${job.role}
-Location: ${job.location}
-Salary: ${job.salary || 'Not listed'}
-URL: ${job.url}
-
-MY BASE RESUME:
-SARIK ENG
-Richmond, BC | 236-513-1896 | sarikc2@gmail.com | Permanent Resident of Canada
-
-PROFESSIONAL SUMMARY
-Client-focused banking and financial services professional with 7+ years of front-line experience building customer relationships, explaining complex financial processes, and delivering solutions across regulated environments. Currently completing the Canadian Securities Course (CSC) — Exam 1 passed, Exam 2 scheduled June 2026; CPH in progress. Certified in Federal Income Tax (H&R Block, 2025). Hands-on investor across equities, ETFs, and crypto. MBA (Distinction). Trilingual: English, Khmer, French.
-
-EXPERIENCE
-Tax Preparer & Customer Representative | Dhiman & Company Inc., Richmond, BC | Jan 2026 – May 2026
-- Guided clients through complex regulated CRA filing processes via phone and email
-- Applied legislation to assess eligibility, prepare T1/T2 returns and GST/HST reconciliations
-- Maintained audit-ready documentation under strict confidentiality standards
-
-Customer Service Representative | TLC Healthcare Services Inc., Parksville, BC | Oct 2023 – Dec 2025
-- Managed 50+ daily client interactions via phone and in-person in a regulated environment
-- Maintained patient records across two regulated platforms (Kroll, ImmsBC)
-- Exercised good judgement in confidential matters with diverse client backgrounds
-
-Sales Associate | Running Room, Richmond, BC | Oct 2024 – Dec 2025
-- Operated store independently; assessed individual customer needs and delivered tailored recommendations
-- Built repeat customer relationships through consistent, knowledgeable service
-
-Sales Associate | The Home Depot, West Vancouver & Nanaimo, BC | Mar 2022 – Oct 2025
-- Provided in-person, phone, and online customer support in high-volume retail environment
-- Used internal systems for order management and inventory tracking daily
-
-Store Manager | Two Roads Retail Specialist Inc., West Vancouver, BC | Aug – Oct 2023
-- Led day-to-day operations including staff scheduling, performance reviews, and sales reporting
-- Promoted digital data capture at point of sale above company average
-
-Sales & Marketing Manager | Vattanac Properties, Phnom Penh, Cambodia | Jan – Dec 2021
-- Managed B2B and B2C client accounts through structured follow-up and relationship-building
-- Prepared budget proposals and collaborated cross-functionally with leadership
-
-Business Development Manager | Naki Group, Cambodia | Jun 2019 – Jan 2021
-- Built client and vendor portfolio from launch; negotiated multi-region contracts
-- Trained internal team on client service standards
-
-Sales Manager | AboutAsia Travel, Siem Reap, Cambodia | Jan 2014 – Oct 2016
-- Sold customized packages to international clients via phone and email
-- Resolved complaints and refund requests with discretion
-
-EDUCATION
-MBA (Distinction) | University Canada West, Vancouver, BC | 2022–2023
-Master of Tourism Management | Victoria University of Wellington, NZ | 2017–2019
-Bachelor of Business Administration | National University of Management, Cambodia | 2007–2011
-
-CERTIFICATIONS
-- CSC Exam 1 passed; Exam 2 June 2026
-- Federal Income Tax Level 1 — H&R Block (2025)
-- MS Office Suite: Word, Excel (Advanced), Outlook
-- CRM: Zoho CRM, Kroll, ImmsBC; Trilingual: English, Khmer, French
-
-After reading the actual job description, return ONLY valid JSON, no markdown, no explanation:
-{
-  "job_requirements_found": "2-3 sentence summary of what the actual job requires",
-  "summary": "3-sentence tailored professional summary using actual keywords from the job description",
-  "competencies": ["skill 1","skill 2","skill 3","skill 4","skill 5","skill 6","skill 7","skill 8","skill 9","skill 10"],
-  "experience": {
-    "Dhiman & Company Inc.": ["bullet 1","bullet 2","bullet 3"],
-    "TLC Healthcare Services Inc.": ["bullet 1","bullet 2","bullet 3"],
-    "Running Room": ["bullet 1","bullet 2"],
-    "The Home Depot": ["bullet 1"],
-    "Two Roads Retail Specialist Inc.": ["bullet 1","bullet 2"],
-    "Vattanac Properties": ["bullet 1"],
-    "Naki Group": ["bullet 1"],
-    "AboutAsia Travel": ["bullet 1"]
-  },
-  "cover_letter": ["paragraph 1","paragraph 2","paragraph 3"]
-}
-
-Rules:
-- MUST read the actual job posting before tailoring — do not guess requirements
-- Never invent credentials or experience not in the base resume
-- Mirror the actual job description keywords naturally
-- Cover letter: max 250 words, 3 paragraphs — opening with role+company+fit, relevant skills, confident closing with call to action
-- Bullets: concise, achievement-focused, under 2 lines each
-- If you cannot fetch the URL, return: {"error": "Could not fetch job description"}`;
-
-  let data;
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-beta': 'interleaved-thinking-2025-05-14'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 3000,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    data = await res.json();
-  } catch (e) {
-    setBtn('📄 Generate Docs', false);
-    alert('Network error — check your connection and try again.');
-    return;
-  }
-
-  setBtn('⏳ Tailoring...', true);
-
-  const textBlock = (data.content || []).filter(b => b.type === 'text').pop();
-  if (!textBlock) {
-    setBtn('📄 Generate Docs', false);
-    alert('Unexpected API response — check your API key and try again.');
-    return;
-  }
-
-  let parsed;
-  try {
-    let raw = textBlock.text.trim().replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-    parsed = JSON.parse(raw);
-  } catch {
-    setBtn('📄 Generate Docs', false);
-    alert('Could not parse tailored content. Try again.');
-    return;
-  }
+  // Cover letter — 3 paragraphs, job.hook drives the opening line
+  const coShort   = job.company.split('(')[0].trim();
+  const coNetwork = isBig5 ? `${coShort}'s branch network` : isCU ? `${coShort}'s member advisory model` : `${coShort}'s team`;
+  const hookCore  = (job.hook || '').replace(/^I'm currently/, 'I am currently');
+  const coverLetter = [
+    `I am writing to express my strong interest in the ${roleName} position at ${coShort}. ${hookCore}`,
+    `My background combines 7+ years of regulated, client-facing experience with active financial credentials. ` +
+    `At Dhiman & Company, I guided clients through CRA-regulated filing processes — applying legislation, preparing T1/T2 returns, ` +
+    `and maintaining audit-ready documentation under strict confidentiality. At TLC Healthcare, I managed 50+ daily interactions ` +
+    `across compliance-sensitive platforms, building the accuracy, discretion, and client empathy that ${coNetwork} requires.`,
+    `I am eager to bring my credentials to ${coShort} and grow within the advisory track as I complete my CSC licensing in June 2026. ` +
+    `I welcome the opportunity to discuss how my background aligns with this role. Thank you for your consideration.`,
+  ];
 
   setBtn('📄 Generate Docs', false);
-  showGenDocsModal(job, parsed.error ? null : parsed, parsed.error || null);
+  showGenDocsModal(job, {
+    job_requirements_found: signals.length ? signals.join(' · ') : job.whyFit,
+    summary,
+    competencies,
+    experience: _BASE_EXPERIENCE,
+    cover_letter: coverLetter,
+  }, null);
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
@@ -4634,7 +4506,7 @@ Rules:
       <div id="gdm-error" style="display:none;color:#f87171;font-size:0.88rem;padding:14px;background:rgba(239,68,68,0.08);border-radius:6px;margin-bottom:16px;"></div>
       <div id="gdm-body" style="display:none;">
         <div style="margin-bottom:16px;">
-          <div style="font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#2dd4bf;margin-bottom:6px;">What This Role Requires</div>
+          <div style="font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#2dd4bf;margin-bottom:6px;">Job Fit Signals</div>
           <div id="gdm-requirements" style="font-size:0.88rem;color:#d1d5db;line-height:1.6;background:rgba(45,212,191,0.05);border-left:2px solid rgba(45,212,191,0.4);padding:10px 14px;border-radius:0 4px 4px 0;"></div>
         </div>
         <div style="margin-bottom:22px;">
@@ -4705,6 +4577,39 @@ function triggerDownload(blob, filename) {
 }
 
 // ── docx builders ─────────────────────────────────────────────────────────────
+
+const _BASE_EXPERIENCE = {
+  'Dhiman & Company Inc.': [
+    'Guided clients through complex regulated CRA filing processes via phone and email, explaining requirements and timelines from intake to completion',
+    'Applied legislation to assess client eligibility, explain financial obligations, and prepare accurate T1/T2 returns and GST/HST reconciliations',
+    'Maintained audit-ready documentation under strict confidentiality standards; resolved discrepancies in client financial records before filing',
+  ],
+  'TLC Healthcare Services Inc.': [
+    'Managed 50+ daily client interactions via phone and in-person in a regulated environment; resolved issues in real time and escalated complex cases',
+    'Maintained patient records across two regulated platforms (Kroll, ImmsBC); performed data entry and ensured file integrity across all active accounts',
+    'Exercised good judgement in confidential matters and applied patience and tact consistently with clients from diverse backgrounds',
+  ],
+  'Running Room': [
+    'Operated store independently; assessed individual customer needs through targeted questions and delivered confident, tailored recommendations',
+    'Built repeat customer relationships through consistent, knowledgeable, and personalized service interactions',
+  ],
+  'The Home Depot': [
+    'Provided in-person, phone, and online customer support in a high-volume retail environment; used internal systems for order management and inventory tracking daily',
+  ],
+  'Two Roads Retail Specialist Inc.': [
+    'Led day-to-day operations including staff scheduling, performance reviews, and sales reporting with minimal supervision',
+    'Promoted digital data capture at point of sale above company average; trained team on customer engagement standards',
+  ],
+  'Vattanac Properties': [
+    'Managed B2B and B2C client accounts through structured follow-up and relationship-building; prepared budget proposals and collaborated cross-functionally with leadership',
+  ],
+  'Naki Group': [
+    'Built client and vendor portfolio from launch; negotiated multi-region contracts and trained internal team on client service standards',
+  ],
+  'AboutAsia Travel': [
+    'Sold customized packages to international clients via phone and email; resolved complaints and refund requests with discretion to protect client relationships',
+  ],
+};
 
 const _EXP_META = [
   { key: 'Dhiman & Company Inc.',          title: 'Tax Preparer & Customer Representative (Contract Full-time)', loc: 'Dhiman & Company Inc., Richmond, BC',                      dates: 'Jan 2026 – May 2026'    },
