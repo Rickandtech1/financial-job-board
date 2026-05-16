@@ -85,6 +85,41 @@ def extract_url(item: dict) -> str:
     return ""
 
 
+def is_job_active(item: dict) -> bool:
+    """Return False if the raw Apify item shows the job is expired, closed, or older than 30 days."""
+    if item.get('expired') is True:    return False
+    if item.get('isExpired') is True:  return False
+    if item.get('isClosed') is True:   return False
+    if item.get('isActive') is False:  return False
+
+    status = str(item.get('jobStatus', item.get('status', ''))).lower()
+    if status in ('expired', 'closed', 'filled', 'inactive', 'removed'):
+        return False
+
+    today = datetime.date.today()
+    for field in ('closingDate', 'expiryDate', 'validThrough', 'deadline', 'applicationDeadline'):
+        val = item.get(field)
+        if val:
+            try:
+                d = datetime.date.fromisoformat(str(val)[:10])
+                if d < today:
+                    return False
+            except Exception:
+                pass
+
+    for field in ('datePosted', 'postedAt', 'publishedAt', 'date', 'scrapedAt'):
+        val = item.get(field)
+        if val:
+            try:
+                d = datetime.date.fromisoformat(str(val)[:10])
+                if (today - d).days > 30:
+                    return False
+            except Exception:
+                pass
+
+    return True
+
+
 def normalize(item: dict, source: str) -> dict:
     """Convert a raw Apify item into our standard job dict."""
     title    = (item.get("title") or item.get("positionName") or
@@ -149,6 +184,8 @@ def scrape_all() -> list:
         "location": "Vancouver, British Columbia, Canada",
         "maxResults": 50,
     })
+    items = [i for i in items if is_job_active(i)]
+    print(f"  After expiry filter: {len(items)} LinkedIn items", flush=True)
     raw += [normalize(i, "LinkedIn") for i in items]
 
     # SOURCE 2: Indeed Canada
@@ -161,6 +198,8 @@ def scrape_all() -> list:
                      "customer experience associate OR customer experience representative"),
         "maxItems": 50,
     })
+    items = [i for i in items if is_job_active(i)]
+    print(f"  After expiry filter: {len(items)} Indeed items", flush=True)
     raw += [normalize(i, "Indeed") for i in items]
 
     # SOURCE 3: Glassdoor (4 parallel-ish runs — sequential in Python, all started before polling)
@@ -173,6 +212,7 @@ def scrape_all() -> list:
     ]
     for inp in gd_inputs:
         items = apify_post("bebity~glassdoor-jobs-scraper", inp)
+        items = [i for i in items if is_job_active(i)]
         raw += [normalize(i, "Glassdoor") for i in items]
 
     # SOURCE 4: ZipRecruiter
@@ -199,6 +239,8 @@ def scrape_all() -> list:
             ],
             "maxCrawlDepth": 1,
         })
+    items = [i for i in items if is_job_active(i)]
+    print(f"  After expiry filter: {len(items)} ZipRecruiter items", flush=True)
     raw += [normalize(i, "ZipRecruiter") for i in items]
 
     # SOURCE 5: Big 5 bank career pages
@@ -228,6 +270,8 @@ def scrape_all() -> list:
     }
     items = apify_post("apify~website-content-crawler", {
         "startUrls": bank_pages, "maxCrawlDepth": 1})
+    items = [i for i in items if is_job_active(i)]
+    print(f"  After expiry filter: {len(items)} Big 5 bank items", flush=True)
     for i in items:
         page_url = i.get("url", "")
         src = "Big 5 Bank Careers"
@@ -278,6 +322,8 @@ def scrape_all() -> list:
 
     items = apify_post("apify~website-content-crawler", {
         "startUrls": cu_start_urls, "maxCrawlDepth": 1})
+    items = [i for i in items if is_job_active(i)]
+    print(f"  After expiry filter: {len(items)} credit union items", flush=True)
     for i in items:
         page_url = i.get("url", "")
         title    = (i.get("title") or "").lower()
@@ -1092,6 +1138,40 @@ def build_resume_package_email(jobs: list) -> str:
 </body></html>"""
 
 
+# ── Stale job removal ─────────────────────────────────────────────────────────
+
+def remove_stale_jobs(html_path: str) -> int:
+    """Remove jobs with daysAgo > 45 unless they're in the active pipeline. Returns count removed."""
+    with open(html_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    removed = 0
+
+    def check_block(m):
+        nonlocal removed
+        block = m.group(0)
+        status_m = re.search(r'status:\s*"([^"]+)"', block)
+        status = status_m.group(1) if status_m else 'To Apply'
+        if status in ('Applied', 'Interview', 'Offer'):
+            return block
+        days_m = re.search(r'daysAgo:\s*(\d+)', block)
+        if days_m and int(days_m.group(1)) > 45:
+            removed += 1
+            return ''
+        return block
+
+    new_content = re.sub(r'\n  \{[\s\S]*?\n  \},', check_block, content)
+
+    if removed > 0:
+        with open(html_path, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+        print(f"  [INFO] Removed {removed} stale job(s) (daysAgo > 45, status: To Apply)", flush=True)
+    else:
+        print("  [INFO] No stale jobs to remove", flush=True)
+
+    return removed
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
@@ -1103,6 +1183,10 @@ def main():
     if not RESEND_API_KEY:
         print("[ERROR] RESEND_API_KEY not set. Aborting.", flush=True)
         sys.exit(1)
+
+    # Step 0: Remove stale jobs (daysAgo > 45, not in pipeline)
+    print("\n[STEP 0] Removing stale jobs ...", flush=True)
+    remove_stale_jobs(JOB_BOARD_PATH)
 
     # Step 1: Scrape
     raw_jobs = scrape_all()
