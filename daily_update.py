@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
 Daily job board updater for Sarik Eng — Metro Vancouver financial services roles.
-Scrapes LinkedIn, Indeed, Glassdoor, ZipRecruiter, Big 5 banks, and Metro Van credit unions.
-Scores, deduplicates, appends to job_board.html, commits, pushes, and sends a digest email.
+Scrapes Job Bank Canada, Big 5 bank Workday APIs, and Metro Van credit union pages.
+Scores, deduplicates, appends to index.html, commits, pushes, and sends a digest email.
 
-Usage (GitHub Actions sets env vars automatically):
-  APIFY_TOKEN=...  RESEND_API_KEY=...  TO_EMAIL=...  python3 daily_update.py
+Usage:
+  RESEND_API_KEY=...  TO_EMAIL=...  python3 daily_update.py
 """
 
 import json, os, re, sys, time, tempfile, subprocess, datetime, urllib.request, urllib.error, base64
 import requests
+from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 
 # ── Config ────────────────────────────────────────────────────────────────────
-APIFY_TOKEN    = os.environ.get("APIFY_TOKEN", "")
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 TO_EMAIL       = os.environ.get("TO_EMAIL", "ricktey02@gmail.com")
 GITHUB_PAT     = os.environ.get("GITHUB_PAT", "")
@@ -23,59 +23,60 @@ JOB_BOARD_PATH = os.path.join(REPO_DIR, "index.html")
 TODAY          = datetime.date.today().isoformat()
 ANTHROPIC_KEY  = os.environ.get("ANTHROPIC_API_KEY", "")
 
-# ── Apify helpers ─────────────────────────────────────────────────────────────
+# ── HTTP session ──────────────────────────────────────────────────────────────
 
-def apify_post(actor: str, input_body: dict, timeout_s: int = 600) -> list:
-    """Start an Apify actor run, poll until done, return dataset items."""
-    token = APIFY_TOKEN
-    base  = "https://api.apify.com/v2"
+SESSION = requests.Session()
+SESSION.headers.update({
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+    "Referer":    "https://www.jobbank.gc.ca/jobsearch/",
+    "Accept-Language": "en-CA,en;q=0.9",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+})
 
-    # Start run
-    url  = f"{base}/acts/{actor}/runs?token={token}"
-    data = json.dumps(input_body).encode()
-    req  = urllib.request.Request(url, data=data, method="POST")
-    req.add_header("Content-Type", "application/json")
-    try:
-        resp    = urllib.request.urlopen(req, timeout=30)
-        run     = json.loads(resp.read())["data"]
-        run_id  = run["id"]
-        ds_id   = run.get("defaultDatasetId", "")
-    except Exception as e:
-        print(f"  [WARN] {actor}: failed to start — {e}", flush=True)
-        return []
+# ── Scraping constants ────────────────────────────────────────────────────────
 
-    print(f"  [INFO] {actor}: run {run_id} started", flush=True)
+JOBBANK_SEARCHES = [
+    "https://www.jobbank.gc.ca/jobsearch/jobsearch?searchstring=financial+services+representative&locationstring=Vancouver%2C+BC&mid=39070&fltr2=48&sort=M",
+    "https://www.jobbank.gc.ca/jobsearch/jobsearch?searchstring=investment+representative&locationstring=Vancouver%2C+BC&mid=39070&sort=M",
+    "https://www.jobbank.gc.ca/jobsearch/jobsearch?searchstring=customer+experience+associate+bank&locationstring=Vancouver%2C+BC&mid=39070&sort=M",
+    "https://www.jobbank.gc.ca/jobsearch/jobsearch?searchstring=financial+advisor&locationstring=Vancouver%2C+BC&mid=39070&sort=M",
+]
 
-    # Poll
-    deadline = time.time() + timeout_s
-    while time.time() < deadline:
-        time.sleep(30)
-        try:
-            poll = urllib.request.urlopen(
-                f"{base}/acts/{actor}/runs/{run_id}?token={token}", timeout=15)
-            status = json.loads(poll.read())["data"]["status"]
-            if status == "SUCCEEDED":
-                break
-            if status in ("FAILED", "ABORTED", "TIMED-OUT"):
-                print(f"  [WARN] {actor}: run ended with status {status}", flush=True)
-                return []
-            print(f"  [INFO] {actor}: {status} ...", flush=True)
-        except Exception as e:
-            print(f"  [WARN] {actor}: poll error — {e}", flush=True)
-    else:
-        print(f"  [WARN] {actor}: timed out after {timeout_s}s", flush=True)
-        return []
+# Only TD and BMO confirmed to work via CXS API; others (RBC, Scotia, CIBC) use
+# different ATSes (Phenom, SuccessFactors) without accessible JSON endpoints.
+WORKDAY_BANKS = [
+    {
+        "company":  "TD Bank",
+        "cxs_url":  "https://td.wd3.myworkdayjobs.com/wday/cxs/td/TD_Bank_Careers/jobs",
+        "base_url": "https://td.wd3.myworkdayjobs.com/en-US/TD_Bank_Careers",
+        "source":   "TD Careers",
+    },
+    {
+        "company":  "BMO Bank of Montreal",
+        "cxs_url":  "https://bmo.wd3.myworkdayjobs.com/wday/cxs/bmo/External/jobs",
+        "base_url": "https://bmo.wd3.myworkdayjobs.com/en-US/External",
+        "source":   "BMO Careers",
+    },
+]
 
-    # Fetch dataset
-    try:
-        ds_url  = f"{base}/datasets/{ds_id}/items?token={token}&limit=200"
-        resp2   = urllib.request.urlopen(ds_url, timeout=30)
-        items   = json.loads(resp2.read())
-        print(f"  [INFO] {actor}: {len(items)} items fetched", flush=True)
-        return items
-    except Exception as e:
-        print(f"  [WARN] {actor}: dataset fetch failed — {e}", flush=True)
-        return []
+WORKDAY_SEARCH = (
+    "financial services representative OR investment representative OR "
+    "customer experience associate OR associate financial advisor OR investment associate"
+)
+
+CU_CAREERS = [
+    {"company": "Vancity Credit Union",    "url": "https://www.vancity.com/careers/"},
+    {"company": "Coast Capital Savings",   "url": "https://careers.coastcapitalsavings.com/"},
+    {"company": "BlueShore Financial",     "url": "https://www.blueshorefinancial.com/about-blueshore/careers"},
+    {"company": "First West Credit Union", "url": "https://careers.firstwestcu.ca/"},
+    {"company": "Khalsa Credit Union",     "url": "https://www.khalsacreditunion.ca/about/careers/"},
+    {"company": "Sunrise Credit Union",    "url": "https://www.sunrisecu.mb.ca/about/careers"},
+]
+
+JOB_KEYWORDS = {
+    "financial", "representative", "advisor", "associate", "banking",
+    "member service", "customer experience", "member advice", "investment", "wealth",
+}
 
 
 def extract_url(item: dict) -> str:
@@ -178,177 +179,193 @@ def normalize(item: dict, source: str) -> dict:
 
 # ── Scraping ──────────────────────────────────────────────────────────────────
 
+def scrape_jobbank() -> list:
+    items = []
+    seen_urls = set()
+
+    for search_url in JOBBANK_SEARCHES:
+        try:
+            time.sleep(1)
+            resp = SESSION.get(search_url, timeout=30)
+            if resp.status_code != 200:
+                print(f"  [WARN] Job Bank: HTTP {resp.status_code}", flush=True)
+                continue
+
+            soup = BeautifulSoup(resp.text, "lxml")
+            # Each job card is <article class="action-buttons">; the clickable
+            # link inside has class="resultJobItem"
+            articles = soup.select("article.action-buttons")
+            if not articles:
+                print(f"  [INFO] Job Bank: no results for {search_url.split('searchstring=')[1].split('&')[0]}", flush=True)
+                continue
+
+            for article in articles:
+                try:
+                    link = article.select_one("a.resultJobItem")
+                    if not link:
+                        continue
+                    href = link.get("href", "")
+                    # Strip jsessionid from URL
+                    href = re.sub(r';jsessionid=[^?]*', '', href)
+                    job_url = ("https://www.jobbank.gc.ca" + href
+                               if href.startswith("/") else href)
+                    if job_url in seen_urls:
+                        continue
+                    seen_urls.add(job_url)
+
+                    title    = (link.select_one("span.noctitle") or
+                                link.select_one("h3.title")).get_text(strip=True)
+                    company  = getattr(article.select_one("li.business"), "get_text", lambda **_: "")(strip=True)
+                    loc_li   = article.select_one("li.location")
+                    # Remove the hidden "Location" label span before extracting text
+                    if loc_li:
+                        for hidden in loc_li.select("span.wb-inv"):
+                            hidden.decompose()
+                    location = loc_li.get_text(strip=True) if loc_li else ""
+                    date_str = getattr(article.select_one("li.date"), "get_text", lambda **_: "")(strip=True)
+                    # Salary is already on the card
+                    sal_li   = article.select_one("li.salary")
+                    salary   = sal_li.get_text(strip=True).replace("Salary", "").strip() if sal_li else ""
+
+                    # Fetch detail page for full description
+                    description = ""
+                    time.sleep(1)
+                    try:
+                        detail = SESSION.get(job_url, timeout=30)
+                        if detail.status_code == 200:
+                            dsoup   = BeautifulSoup(detail.text, "lxml")
+                            desc_el = (dsoup.select_one("#job-detail-section") or
+                                       dsoup.select_one(".job-posting-details") or
+                                       dsoup.select_one("article.job-posting") or
+                                       dsoup.select_one("main"))
+                            if desc_el:
+                                description = desc_el.get_text(separator=" ", strip=True)[:2000]
+                    except Exception as e:
+                        print(f"  [WARN] Job Bank detail fetch: {e}", flush=True)
+
+                    items.append({
+                        "title":       title,
+                        "company":     company,
+                        "location":    location or "Vancouver, BC",
+                        "url":         job_url,
+                        "salary":      salary,
+                        "description": description,
+                        "datePosted":  date_str,
+                    })
+                except Exception as e:
+                    print(f"  [WARN] Job Bank item parse: {e}", flush=True)
+
+        except Exception as e:
+            print(f"  [WARN] Job Bank search failed: {e}", flush=True)
+
+    return items
+
+
+def scrape_workday_banks() -> list:
+    items = []
+
+    for bank in WORKDAY_BANKS:
+        try:
+            time.sleep(1)
+            resp = SESSION.post(
+                bank["cxs_url"],
+                json={"appliedFacets": {}, "limit": 20, "offset": 0,
+                      "searchText": WORKDAY_SEARCH},
+                headers={"Content-Type": "application/json"},
+                timeout=20,
+            )
+            if resp.status_code != 200:
+                print(f"  [WARN] {bank['company']} Workday: HTTP {resp.status_code}", flush=True)
+                continue
+
+            postings = resp.json().get("jobPostings", [])
+            found = 0
+            for p in postings:
+                loc = p.get("locationsText", "")
+                loc_l = loc.lower()
+                if loc and not any(kw in loc_l for kw in
+                                   ("vancouver", "british columbia", " bc", "remote")):
+                    continue
+                ext = p.get("externalPath", "")
+                items.append({
+                    "title":      p.get("title", ""),
+                    "company":    bank["company"],
+                    "location":   loc or "Vancouver, BC",
+                    "url":        bank["base_url"] + ext if ext else "",
+                    "salary":     "",
+                    "description": "",
+                    "datePosted": p.get("postedOn", ""),
+                })
+                found += 1
+            print(f"  [INFO] {bank['company']}: {found} Vancouver/BC postings", flush=True)
+
+        except Exception as e:
+            print(f"  [WARN] {bank['company']} Workday failed: {e}", flush=True)
+
+    return items
+
+
+def scrape_credit_unions() -> list:
+    items = []
+
+    for cu in CU_CAREERS:
+        company = cu["company"]
+        cu_url  = cu["url"]
+        try:
+            time.sleep(1)
+            resp = SESSION.get(cu_url, timeout=15)
+            if resp.status_code != 200:
+                print(f"  [INFO] {company}: HTTP {resp.status_code}", flush=True)
+                continue
+
+            soup  = BeautifulSoup(resp.text, "lxml")
+            found = 0
+            for link in soup.find_all("a", href=True):
+                text = link.get_text(strip=True)
+                href = link["href"]
+                if not text or len(text) < 5 or len(text) > 150:
+                    continue
+                if not any(kw in text.lower() for kw in JOB_KEYWORDS):
+                    continue
+                job_url = (href if href.startswith("http")
+                           else re.sub(r'/[^/]*$', '', cu_url.rstrip("/")) + "/" + href.lstrip("/"))
+                items.append({
+                    "title":      text,
+                    "company":    company,
+                    "location":   "Metro Vancouver, BC",
+                    "url":        job_url,
+                    "salary":     "",
+                    "description": "",
+                })
+                found += 1
+
+            if found == 0:
+                print(f"  [INFO] {company} — no jobs found (may be JS-rendered)", flush=True)
+
+        except Exception as e:
+            print(f"  [WARN] {company} failed: {e}", flush=True)
+
+    return items
+
+
 def scrape_all() -> list:
     raw = []
-
     print("\n[STEP 2] Scraping all sources ...", flush=True)
 
-    # SOURCE 1: LinkedIn
-    print("  LinkedIn ...", flush=True)
-    _li_loc = "Vancouver%2C%20British%20Columbia%2C%20Canada"
-    items = apify_post("curious_coder~linkedin-jobs-scraper", {
-        "urls": [
-            f"https://www.linkedin.com/jobs/search/?keywords=investment+representative+OR+financial+services+representative&location={_li_loc}",
-            f"https://www.linkedin.com/jobs/search/?keywords=associate+financial+advisor+OR+investment+associate&location={_li_loc}",
-            f"https://www.linkedin.com/jobs/search/?keywords=customer+experience+associate+bank+OR+associate+wealth+advisor&location={_li_loc}",
-        ],
-        "count": 50,
-        "scrapeCompany": False,
-    })
-    items = [i for i in items if is_job_active(i)]
-    print(f"  After expiry filter: {len(items)} LinkedIn items", flush=True)
-    raw += [normalize(i, "LinkedIn") for i in items]
+    print("  Job Bank Canada ...", flush=True)
+    jb_items = scrape_jobbank()
+    print(f"  Job Bank: {len(jb_items)} items", flush=True)
+    raw += [normalize(i, "Job Bank Canada") for i in jb_items]
 
-    # SOURCE 2: Indeed Canada
-    print("  Indeed Canada ...", flush=True)
-    items = apify_post("misceres~indeed-scraper", {
-        "country": "CA",
-        "location": "Vancouver, BC",
-        "position": ("investment representative OR financial services representative OR "
-                     "associate financial advisor OR investment associate OR "
-                     "customer experience associate OR customer experience representative"),
-        "maxItems": 50,
-    })
-    items = [i for i in items if is_job_active(i)]
-    print(f"  After expiry filter: {len(items)} Indeed items", flush=True)
-    raw += [normalize(i, "Indeed") for i in items]
+    print("  Big 5 bank Workday APIs (TD, BMO) ...", flush=True)
+    wd_items = scrape_workday_banks()
+    print(f"  Workday banks: {len(wd_items)} items", flush=True)
+    raw += [normalize(i, "Bank Careers") for i in wd_items]
 
-    # SOURCE 3: Glassdoor (4 parallel-ish runs — sequential in Python, all started before polling)
-    print("  Glassdoor ...", flush=True)
-    gd_inputs = [
-        {"keyword": "investment representative",         "location": "Vancouver, BC, Canada", "maxItems": 20},
-        {"keyword": "financial services representative", "location": "Vancouver, BC, Canada", "maxItems": 20},
-        {"keyword": "associate financial advisor",       "location": "Vancouver, BC, Canada", "maxItems": 20},
-        {"keyword": "customer experience associate bank","location": "Vancouver, BC, Canada", "maxItems": 20},
-    ]
-    for inp in gd_inputs:
-        items = apify_post("bebity~glassdoor-jobs-scraper", inp)
-        items = [i for i in items if is_job_active(i)]
-        raw += [normalize(i, "Glassdoor") for i in items]
-
-    # SOURCE 4: ZipRecruiter
-    print("  ZipRecruiter ...", flush=True)
-    zr_keywords = [
-        "investment representative",
-        "financial services representative",
-        "associate financial advisor",
-        "customer experience associate bank",
-    ]
-    zr_items = []
-    for kw in zr_keywords:
-        kw_items = apify_post("orgupdate~ziprecruiter-jobs-scraper", {
-            "includeKeyword": kw,
-            "locationName": "Vancouver, BC",
-            "countryName": "canada",
-            "jobType": "FULLTIME",
-            "datePosted": "month",
-            "pagesToFetch": 2,
-        })
-        zr_items += kw_items
-    items = [i for i in zr_items if is_job_active(i)]
-    print(f"  After expiry filter: {len(items)} ZipRecruiter items", flush=True)
-    raw += [normalize(i, "ZipRecruiter") for i in items]
-
-    # SOURCE 5: Big 5 bank career pages
-    print("  Big 5 bank career pages ...", flush=True)
-    bank_pages = [
-        {"url": "https://jobs.rbc.com/ca/en/search-results?keywords=investment+representative&location=Vancouver"},
-        {"url": "https://jobs.rbc.com/ca/en/search-results?keywords=financial+services+representative&location=Vancouver"},
-        {"url": "https://jobs.rbc.com/ca/en/search-results?keywords=customer+experience+associate&location=Vancouver"},
-        {"url": "https://jobs.td.com/en-CA/job-search-results/?keyword=investment+representative&location=British+Columbia"},
-        {"url": "https://jobs.td.com/en-CA/job-search-results/?keyword=financial+services+representative&location=British+Columbia"},
-        {"url": "https://jobs.td.com/en-CA/job-search-results/?keyword=customer+experience+associate&location=British+Columbia"},
-        {"url": "https://jobs.scotiabank.com/search?q=investment+representative&l=Vancouver%2C+BC"},
-        {"url": "https://jobs.scotiabank.com/search?q=financial+services+representative&l=Vancouver%2C+BC"},
-        {"url": "https://jobs.scotiabank.com/search?q=customer+experience+associate&l=Vancouver%2C+BC"},
-        {"url": "https://bmo.wd3.myworkdayjobs.com/External/jobs?q=investment+representative&locations=Vancouver"},
-        {"url": "https://bmo.wd3.myworkdayjobs.com/External/jobs?q=customer+experience+associate&locations=Vancouver"},
-        {"url": "https://careers.cibc.com/en/search-results?keywords=investment+representative&location=Vancouver"},
-        {"url": "https://careers.cibc.com/en/search-results?keywords=customer+experience+associate&location=Vancouver"},
-    ]
-    # Map domain → source/company label
-    BANK_MAP = {
-        "rbc.com":        ("RBC Royal Bank",      "RBC Careers"),
-        "td.com":         ("TD Canada Trust",      "TD Careers"),
-        "scotiabank.com": ("Scotiabank",           "Scotiabank Careers"),
-        "bmo.wd3":        ("BMO Bank of Montreal", "BMO Careers"),
-        "cibc.com":       ("CIBC",                 "CIBC Careers"),
-    }
-    items = apify_post("apify~cheerio-scraper", {
-        "startUrls": bank_pages,
-        "maxCrawlDepth": 1,
-        "pageFunction": "async function pageFunction(context) { const { $, request } = context; const jobs = []; $('a').each((i, el) => { const href = $(el).attr('href') || ''; const text = $(el).text().trim(); if (text.length > 4 && /job|career|position|role/i.test(href + ' ' + text)) { jobs.push({ url: href.startsWith('http') ? href : new URL(href, request.url).href, title: text, url: request.url }); } }); return jobs; }",
-    })
-    items = [i for i in items if is_job_active(i)]
-    print(f"  After expiry filter: {len(items)} Big 5 bank items", flush=True)
-    for i in items:
-        page_url = i.get("url", "")
-        src = "Big 5 Bank Careers"
-        for domain_key, (co, src_label) in BANK_MAP.items():
-            if domain_key in page_url:
-                src = src_label
-                if not i.get("company"):
-                    i["company"] = co
-                break
-        raw.append(normalize(i, src))
-
-    # SOURCE 6: Metro Vancouver credit union career pages
-    print("  Metro Vancouver credit union pages ...", flush=True)
-    CU_MAP = {
-        "vancity.com":              ("Vancity Credit Union",          "Vancity Careers"),
-        "coastcapitalsavings.com":  ("Coast Capital Savings",         "Coast Capital Careers"),
-        "firstwestcu.ca":           ("Envision Financial (First West CU)", "First West Careers"),
-        "blueshorefinancial.com":   ("BlueShore Financial",           "BlueShore Careers"),
-        "prosperacu.ca":            ("Prospera Credit Union",         "Prospera Careers"),
-        "wscu.com":                 ("Westminster Savings Credit Union","WSCU Careers"),
-        "gffg.com":                 ("G&F Financial Group",           "G&F Financial Careers"),
-        "khalsacu.ca":              ("Khalsa Credit Union",           "Khalsa CU Careers"),
-        "integriscu.ca":            ("Integris Credit Union",         "Integris CU Careers"),
-    }
-    cu_pages = [{"url": f"https://www.{domain}/about{'Vancity' if 'vancity' in domain else ''}/Careers/"
-                        if "vancity" in domain
-                        else {"url": f"https://www.{domain}/about-us/careers/"
-                                     if domain in ("prosperacu.ca","khalsacu.ca","integriscu.ca")
-                                     else {"url": f"https://www.{domain}/careers/current-opportunities"
-                                                  if "coast" in domain
-                                                  else {"url": f"https://www.{domain}/about/careers"}}}}
-                for domain in CU_MAP]
-
-    # Simpler: just list them directly
-    cu_start_urls = [
-        {"url": "https://www.vancity.com/AboutVancity/Careers/"},
-        {"url": "https://www.coastcapitalsavings.com/careers/current-opportunities"},
-        {"url": "https://www.firstwestcu.ca/about/careers/"},
-        {"url": "https://www.blueshorefinancial.com/about/careers"},
-        {"url": "https://www.prosperacu.ca/about-us/careers/"},
-        {"url": "https://www.wscu.com/about/careers"},
-        {"url": "https://www.gffg.com/about-gf/careers/"},
-        {"url": "https://www.khalsacu.ca/about-us/careers"},
-        {"url": "https://www.integriscu.ca/about/careers"},
-    ]
-    cu_keywords = {"investment", "financial", "representative", "advisor", "associate",
-                   "wealth", "banking", "member service", "customer experience", "member advice"}
-
-    items = apify_post("apify~cheerio-scraper", {
-        "startUrls": cu_start_urls,
-        "maxCrawlDepth": 1,
-        "pageFunction": "async function pageFunction(context) { const { $, request } = context; const jobs = []; $('a').each((i, el) => { const href = $(el).attr('href') || ''; const text = $(el).text().trim(); if (text.length > 4 && /job|career|position|role|opportunit/i.test(href + ' ' + text)) { jobs.push({ url: href.startsWith('http') ? href : new URL(href, request.url).href, title: text, url: request.url }); } }); return jobs; }",
-    })
-    items = [i for i in items if is_job_active(i)]
-    print(f"  After expiry filter: {len(items)} credit union items", flush=True)
-    for i in items:
-        page_url = i.get("url", "")
-        title    = (i.get("title") or "").lower()
-        if not any(kw in title for kw in cu_keywords):
-            continue
-        src = "Credit Union Careers"
-        for domain_key, (co, src_label) in CU_MAP.items():
-            if domain_key in page_url:
-                src = src_label
-                if not i.get("company"):
-                    i["company"] = co
-                break
-        raw.append(normalize(i, src))
+    print("  Credit union career pages ...", flush=True)
+    cu_items = scrape_credit_unions()
+    print(f"  Credit unions: {len(cu_items)} links found", flush=True)
+    raw += [normalize(i, "Credit Union Careers") for i in cu_items]
 
     print(f"  Total raw items: {len(raw)}", flush=True)
     return raw
@@ -1350,9 +1367,6 @@ def remove_expired_existing_jobs(html_path: str) -> int:
 def main():
     print(f"\n=== Daily Job Board Update — {TODAY} ===\n", flush=True)
 
-    if not APIFY_TOKEN:
-        print("[ERROR] APIFY_TOKEN not set. Aborting.", flush=True)
-        sys.exit(1)
     if not RESEND_API_KEY:
         print("[ERROR] RESEND_API_KEY not set. Aborting.", flush=True)
         sys.exit(1)
