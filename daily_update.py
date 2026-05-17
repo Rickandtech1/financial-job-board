@@ -57,6 +57,12 @@ WORKDAY_BANKS = [
         "base_url": "https://bmo.wd3.myworkdayjobs.com/en-US/External",
         "source":   "BMO Careers",
     },
+    {
+        "company":  "Canaccord Genuity",
+        "cxs_url":  "https://cgf.wd10.myworkdayjobs.com/wday/cxs/cgf/CG/jobs",
+        "base_url": "https://cgf.wd10.myworkdayjobs.com/en-US/CG",
+        "source":   "Canaccord Careers",
+    },
 ]
 
 WORKDAY_SEARCH = (
@@ -74,15 +80,14 @@ CU_CAREERS = [
 ]
 
 WEALTH_FIRMS = [
-    {"company": "Odlum Brown Limited",       "url": "https://www.odlumbrown.com/about/join-us/opportunities"},
+    {"company": "Odlum Brown Limited",       "url": "https://www.odlumbrown.com/about/join-us"},
     {"company": "RGF Integrated Wealth",     "url": "https://www.rgfwealth.com/about/careers/"},
     {"company": "PWL Capital",               "url": "https://pwlcapital.com/about/careers/"},
     {"company": "Nicola Wealth",             "url": "https://nicolawealth.com/careers"},
     {"company": "IG Wealth Management",      "url": "https://www.ig.ca/en/careers/financial-advisor-careers"},
     {"company": "Wellington-Altus",          "url": "https://wellington-altus.ca/careers/"},
     {"company": "Richardson Wealth",         "url": "https://richardsonwealth.com/careers/career-opportunities"},
-    {"company": "Canaccord Genuity",         "url": "https://jobs.canaccordgenuity.com/"},
-    {"company": "Raymond James Ltd",         "url": "https://www.raymondjames.ca/careers/corporate-opportunities"},
+    {"company": "Raymond James Ltd",         "url": "https://www.raymondjames.ca/careers"},
     {"company": "ZLC Wealth",                "url": "https://www.zlc.net/careers/"},
     {"company": "Spring Planning",           "url": "https://springplans.ca/careers/"},
     {"company": "Assante Wealth Management", "url": "https://www.assante.com/careers"},
