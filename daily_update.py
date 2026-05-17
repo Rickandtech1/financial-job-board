@@ -924,7 +924,7 @@ def build_email_html(new_jobs: list, total_jobs: int) -> tuple:
 <h2 style="color:#1a237e;">📋 Daily Job Board Update — {TODAY}</h2>
 <p>Sarik, no new roles matched your criteria today. Here's a quick summary:</p>
 <ul>
-  <li><strong>Sources checked:</strong> LinkedIn, Indeed, Glassdoor, ZipRecruiter, Big 5 banks (RBC, TD, Scotiabank, BMO, CIBC), 9 Metro Vancouver credit unions</li>
+  <li><strong>Sources checked:</strong> Job Bank Canada, TD &amp; BMO Workday APIs, 6 Metro Vancouver credit unions (Vancity, Coast Capital, BlueShore, First West, Khalsa, Sunrise)</li>
   <li><strong>Total roles on your board:</strong> {total_jobs}</li>
   <li><strong>Your board:</strong> <a href="{board_url}">{board_url}</a></li>
 </ul>
