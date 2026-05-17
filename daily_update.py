@@ -811,12 +811,13 @@ def append_jobs_to_html(html_path: str, new_jobs: list, start_id: int) -> int:
     with open(html_path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    # Find insertion point: before `];` that closes the JOBS array
-    marker = "];"
-    # Find the last occurrence that's preceded by job objects
-    idx = content.rfind(marker)
+    # Find insertion point: the \n];\n\n/* unique marker that closes the JOBS array.
+    # Never use rfind("];") — other arrays/functions later in the file have ];"
+    # and jobs would be inserted in the wrong place.
+    marker = "\n];\n\n/* "
+    idx = content.find(marker)
     if idx == -1:
-        print("[ERROR] Could not find ]; marker in HTML", flush=True)
+        print("[ERROR] Could not find JOBS array closing marker in HTML", flush=True)
         return 0
 
     blocks = []

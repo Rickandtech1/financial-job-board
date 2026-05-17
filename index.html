@@ -3426,998 +3426,7 @@ const JOBS = [
     whyFit: "Scotiabank's Dunbar Branch CEA posting places Sarik in an affluent Vancouver neighbourhood where investment and retirement conversations are the daily norm. Scotiabank's structured progression from CEA to Investment Representative typically runs 12–24 months with internal certification sponsorship. No licensing required at hire — Sarik's CSC Exam 1 is an immediate differentiator.",
     hook: "Lead with Scotiabank's 'For every future' mandate and connect it to your regulated-service background — then pivot to your CSC Exam 1 completion and your goal of reaching Investment Representative within 18 months."
   },
-];
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   HELPERS
-═══════════════════════════════════════════════════════════════════════════ */
-function scoreClass(n) {
-  if (n >= 85) return 'score-s';
-  if (n >= 70) return 'score-a';
-  if (n >= 50) return 'score-b';
-  return 'score-c';
-}
-
-function arrClass(a) {
-  return { 'Hybrid': 'hybrid', 'On-site': 'onsite', 'Remote': 'remote' }[a] || 'onsite';
-}
-
-function empClass(e) {
-  return (e || '').startsWith('Part') ? 'parttime' : 'fulltime';
-}
-
-function statusClass(s) {
-  return { 'To Apply': 'st-toapply', 'Applied': 'st-applied', 'Interview': 'st-interview', 'Offer': 'st-offer' }[s] || 'st-toapply';
-}
-
-function postedLabel(d) {
-  if (d === 0) return 'Today';
-  if (d === 1) return 'Yesterday';
-  if (d < 7)  return `${d} days ago`;
-  const w = Math.floor(d / 7);
-  return `${w} week${w > 1 ? 's' : ''} ago`;
-}
-
-function parseSalary(s) {
-  const m = s.replace(/[^0-9]/g, '');
-  return parseInt(m) || 0;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   PROMPT BUILDER
-═══════════════════════════════════════════════════════════════════════════ */
-function buildPrompt(job) {
-  const signals = job.signals.map(s => `  • ${s}`).join('\n');
-  const dbNote = job.dealbreaker
-    ? `\n⚠️  DEALBREAKER FLAGS:\n${job.dealbreakersTriggered.map(d => `  • ${d}`).join('\n')}\nProceed only if compensation and lead structure can be confirmed otherwise.\n`
-    : '';
-
-  return `I'm building my application for the role below. Please help me create a complete, tailored application package.
-
-════════════════════════════════════════════════════
-ROLE:       ${job.role}
-COMPANY:    ${job.company}
-LOCATION:   ${job.location} (${job.arrangement})
-SALARY:     ${job.salary}
-FIT SCORE:  ${job.fitScore}/100
-POSTED:     ${postedLabel(job.daysAgo)}
-${dbNote}
-════════════════════════════════════════════════════
-
-MY PROFILE:
-${MY_PROFILE}
-
-KEY JD SIGNALS TO ADDRESS:
-${signals}
-
-WHY I'M A FIT (use as positioning):
-${job.whyFit}
-
-RECOMMENDED OUTREACH HOOK:
-${job.hook}
-
-════════════════════════════════════════════════════
-PLEASE DELIVER ALL OF THE FOLLOWING:
-
-1. COVER LETTER
-   Three tight, tailored paragraphs for ${job.company}. Open with the hook above.
-   No filler openers ("I am writing to express…"). Be direct and confident.
-
-2. RESUME BULLET REWRITES
-   Three bullet point rewrites from my experience that better match this JD's
-   language, keywords, and requirements. Focus on TLC Healthcare and Dhiman & Co.
-
-3. LINKEDIN OUTREACH MESSAGE
-   A connection request to a hiring manager or recruiter at ${job.company}.
-   Under 300 characters. Warm, specific, not generic.
-
-4. INTERVIEW PREP
-   Three likely screening questions based on the JD signals above, each with
-   a suggested answer framework (STAR format where relevant).
-
-5. ONE COMPANY RESEARCH TIP
-   One specific thing to look up about ${job.company} before the interview
-   that will make me stand out — not generic ("read their website") advice.
-════════════════════════════════════════════════════`;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   STATS
-═══════════════════════════════════════════════════════════════════════════ */
-function updateStats() {
-  const total      = JOBS.filter(j => j != null && j.status !== 'Removed').length;
-  const applied    = JOBS.filter(j => j != null && j.status === 'Applied').length;
-  const interviews = JOBS.filter(j => j != null && j.status === 'Interview').length;
-  const clean      = JOBS.filter(j => j != null && !j.dealbreaker);
-  const top        = clean.reduce((a, b) => b.fitScore > a.fitScore ? b : a, clean[0]);
-
-  document.getElementById('js-total').textContent      = total;
-  document.getElementById('js-applied').textContent    = applied;
-  document.getElementById('js-interviews').textContent = interviews;
-  document.getElementById('js-top-score').textContent  = top.fitScore;
-  document.getElementById('js-top-co').textContent     = top.company;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   RENDER
-═══════════════════════════════════════════════════════════════════════════ */
-const COMPANY_PALETTE = [
-  '#E05A5A',  // coral red
-  '#E07828',  // burnt orange
-  '#D4A820',  // amber gold
-  '#B8C830',  // chartreuse
-  '#48C85A',  // green
-  '#28B89A',  // teal
-  '#28A8C8',  // cyan
-  '#3880E0',  // blue
-  '#5858E0',  // indigo
-  '#8848D0',  // purple
-  '#C038A8',  // violet
-  '#E03878',  // hot pink
-  '#E87050',  // terra cotta
-  '#50C890',  // mint
-  '#50A8E8',  // sky blue
-  '#9870E0',  // lavender
-  '#E0A040',  // caramel
-  '#60B040',  // lime
-  '#3898B0',  // teal blue
-  '#D06070',  // rose
-];
-const _companyColorMap = (() => {
-  const map = {};
-  let i = 0;
-  JOBS.forEach(j => { if (!map[j.company]) map[j.company] = COMPANY_PALETTE[i++ % COMPANY_PALETTE.length]; });
-  return map;
-})();
-function _hexRgb(h) {
-  return `${parseInt(h.slice(1,3),16)},${parseInt(h.slice(3,5),16)},${parseInt(h.slice(5,7),16)}`;
-}
-
-function renderCard(job, idx) {
-  const sc  = scoreClass(job.fitScore);
-  const ac  = arrClass(job.arrangement);
-  const stc = statusClass(job.status);
-
-  const dbBanner = job.dealbreaker
-    ? `<div class="db-banner">⚠ Dealbreaker flags · ${job.dealbreakersTriggered.join(' · ')}</div>`
-    : '';
-
-  const signalsHtml = job.signals.map(s => `<li>${s}</li>`).join('');
-
-  return `
-  <div class="job-card ${job.dealbreaker ? 'is-dealbreaker' : ''}"
-       data-id="${job.id}"
-       data-status="${job.status}"
-       data-fit="${job.fitScore}"
-       data-co="${job.company.toLowerCase()}"
-       data-role="${job.role.toLowerCase()}"
-       data-signals="${job.signals.join(' ').toLowerCase()}"
-       onmouseenter="hlCo(this)" onmouseleave="unhlCo()"
-       style="--co-rgb:${_hexRgb(_companyColorMap[job.company]||'#8888AA')};animation-delay:${idx * 0.055}s;background:linear-gradient(to right,rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0.45) 0%,rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0.10) 30%,rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0) 55%);border-left:4px solid ${_companyColorMap[job.company]||'#8888AA'}">
-    <button class="btn-remove-card" onclick="removeCard(${job.id}); event.stopPropagation();" title="Remove this job">✕</button>
-    <span class="card-rank">#${idx + 1}</span>
-    ${dbBanner}
-    <div class="card-body">
-      <div class="card-top">
-        <div class="co-logo">${job.logo}</div>
-        <div class="card-title-block">
-          <div class="co-name">${job.company}</div>
-          <div class="role-title">${job.role}</div>
-        </div>
-      </div>
-      <div class="card-meta">
-        <span class="chip">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-          </svg>
-          ${job.location}
-        </span>
-        <span class="sep">·</span>
-        <span class="badge ${ac}">${job.arrangement}</span>
-        <span class="sep">·</span>
-        <span class="badge ${empClass(job.employment)}">${job.employment || 'Full-Time'}</span>
-        <span class="sep">·</span>
-        <span class="chip">${postedLabel(job.daysAgo)}</span>
-      </div>
-      <div class="card-row">
-        <div class="salary">${job.salary}</div>
-        ${job.url
-          ? `<a class="source-tag source-link" href="${job.url}" target="_blank" rel="noopener">${job.source} ↗</a>`
-          : `<div class="source-tag">${job.source}</div>`}
-      </div>
-      <div class="fit-wrap">
-        <div class="fit-header">
-          <span class="fit-label-text">Fit Score</span>
-          <span class="fit-number ${sc}">${job.fitScore}<sub>/100</sub></span>
-        </div>
-        <div class="fit-track">
-          <div class="fit-fill ${sc}" data-w="${job.fitScore}"></div>
-        </div>
-      </div>
-    </div>
-    <div class="card-footer">
-      <div class="footer-actions">
-        <button class="btn-pos" id="pos-btn-${job.id}" onclick="togglePanel(${job.id})">Why I Fit ↓</button>
-        ${job.status === 'To Apply'
-          ? `<button class="btn-mark-applied" id="applied-btn-${job.id}" onclick="markApplied(${job.id}, this)">Mark Apply</button>`
-          : (job.status === 'Applied' || job.status === 'Interview' || job.status === 'Offer')
-          ? `<button class="btn-mark-applied" id="applied-btn-${job.id}" disabled style="opacity:0.45;cursor:default">✓ Applied</button>`
-          : ''}
-        ${job.url
-          ? `<a class="btn-apply" href="${job.url}" target="_blank" rel="noopener">Apply Now →</a>`
-          : `<span class="btn-apply btn-apply-none">No Link</span>`}
-        ${job.status === 'To Apply' && isDirectJobLink(job.url)
-          ? `<button class="btn-gen-docs" id="gen-docs-btn-${job.id}" onclick="generateDocs(${job.id})">📄 Generate Docs</button>`
-          : ''}
-      </div>
-    </div>
-    <div class="pos-panel" id="pos-panel-${job.id}">
-      <div class="pos-inner">
-        <div>
-          <div class="pos-section-title">Why I'm a Fit</div>
-          <div class="pos-text">${job.whyFit}</div>
-        </div>
-        <div>
-          <div class="pos-section-title">Key JD Signals</div>
-          <ul class="signal-list">${signalsHtml}</ul>
-        </div>
-        <div class="hook-box">
-          <div class="hook-label">Recommended Hook for Outreach &amp; Screening</div>
-          <div class="hook-text">${job.hook}</div>
-          <button class="btn-copy-prompt" id="copy-btn-${job.id}" onclick="copyPrompt(${job.id})">📋 Copy AI Application Prompt</button>
-        </div>
-      </div>
-    </div>
-  </div>`;
-}
-
-function renderGrid(list) {
-  const grid  = document.getElementById('js-grid');
-  const empty = document.getElementById('js-empty');
-
-  if (list.length === 0) {
-    grid.innerHTML = '';
-    grid.appendChild(empty);
-    empty.classList.add('show');
-  } else {
-    grid.innerHTML = list.map((j, i) => renderCard(j, i)).join('');
-    empty.classList.remove('show');
-    grid.appendChild(empty);
-    animateBars();
-  }
-
-  document.getElementById('js-count').textContent = list.length;
-}
-
-function animateBars() {
-  requestAnimationFrame(() => {
-    document.querySelectorAll('.fit-fill').forEach((bar, i) => {
-      const target = bar.dataset.w + '%';
-      setTimeout(() => { bar.style.width = target; }, 80 + i * 50);
-    });
-  });
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   FILTER + SORT
-═══════════════════════════════════════════════════════════════════════════ */
-function getFiltered() {
-  const q      = document.getElementById('js-search').value.toLowerCase().trim();
-  const status = document.querySelector('.filter-btn.active').dataset.status;
-  const fitMin = document.getElementById('js-fit-toggle').checked;
-  const sort   = document.getElementById('js-sort').value;
-
-  let list = JOBS.filter(j => {
-    if (!j || j.status === 'Removed') return false;
-    const matchQ   = !q || j.company.toLowerCase().includes(q) || j.role.toLowerCase().includes(q) || j.signals.some(s => s.toLowerCase().includes(q));
-    const matchSt  = status === 'all' || j.status === status;
-    const matchFit = !fitMin || j.fitScore >= 70;
-    return matchQ && matchSt && matchFit;
-  });
-
-  list.sort((a, b) => {
-    // Pipeline jobs (Applied / Interview / Offer) always sink below active To Apply jobs
-    const aP = (a.status === 'Applied' || a.status === 'Interview' || a.status === 'Offer') ? 1 : 0;
-    const bP = (b.status === 'Applied' || b.status === 'Interview' || b.status === 'Offer') ? 1 : 0;
-    if (aP !== bP) return aP - bP;
-    // Within each group apply the chosen sort
-    if (sort === 'company') return a.company.localeCompare(b.company) || b.fitScore - a.fitScore;
-    if (sort === 'date')    return a.daysAgo - b.daysAgo || b.fitScore - a.fitScore;
-    if (sort === 'salary')  return parseSalary(b.salary) - parseSalary(a.salary) || b.fitScore - a.fitScore;
-    // Default (fit): highest fit score first, newest posting as tiebreaker
-    return b.fitScore - a.fitScore || a.daysAgo - b.daysAgo;
-  });
-
-  return list;
-}
-
-function refresh() { renderGrid(getFiltered()); }
-
-function hlCo(card) {
-  const co = card.dataset.co;
-  document.querySelectorAll(`.job-card[data-co="${co}"]`).forEach(c => {
-    if (c !== card) c.classList.add('co-sibling');
-  });
-}
-function unhlCo() {
-  document.querySelectorAll('.job-card.co-sibling').forEach(c => c.classList.remove('co-sibling'));
-}
-document.addEventListener('mouseleave', unhlCo);
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   INTERACTIONS
-═══════════════════════════════════════════════════════════════════════════ */
-function togglePanel(id) {
-  const panel = document.getElementById(`pos-panel-${id}`);
-  const btn   = document.getElementById(`pos-btn-${id}`);
-  if (!panel) return;
-  panel.classList.toggle('open');
-  btn.classList.toggle('open');
-  btn.textContent = panel.classList.contains('open') ? 'Why I Fit ↑' : 'Why I Fit ↓';
-}
-
-function copyPrompt(id) {
-  const job = JOBS.find(j => j.id === id);
-  if (!job) return;
-
-  const text = buildPrompt(job);
-  const btn  = document.getElementById(`copy-btn-${id}`);
-
-  const markCopied = () => {
-    if (btn) { btn.textContent = '✓ Copied!'; btn.classList.add('copied'); }
-    showToast();
-    setTimeout(() => {
-      if (btn) { btn.textContent = '📋 Copy AI Application Prompt'; btn.classList.remove('copied'); }
-    }, 2500);
-  };
-
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(markCopied).catch(() => fallbackCopy(text, markCopied));
-  } else {
-    fallbackCopy(text, markCopied);
-  }
-}
-
-function fallbackCopy(text, cb) {
-  const ta = Object.assign(document.createElement('textarea'), {
-    value: text, style: 'position:fixed;opacity:0'
-  });
-  document.body.appendChild(ta);
-  ta.focus(); ta.select();
-  try { document.execCommand('copy'); cb(); } catch(e) {}
-  document.body.removeChild(ta);
-}
-
-function showToast() {
-  const t = document.getElementById('js-toast');
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3800);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   PIPELINE TRACKING  (Applied → Interview → Offer)
-═══════════════════════════════════════════════════════════════════════════ */
-const APPLIED_KEY  = 'jb_applied_v2';   // kept for cleanup on load
-const PIPELINE_KEY = 'jb_pipeline_v1';
-
-function savePipelineToStorage() {
-  const pipeline = {
-    Applied:   JOBS.filter(j => j != null && j.status === 'Applied').map(j => j.id),
-    Interview: JOBS.filter(j => j != null && j.status === 'Interview').map(j => j.id),
-    Offer:     JOBS.filter(j => j != null && j.status === 'Offer').map(j => j.id),
-  };
-  localStorage.setItem(PIPELINE_KEY, JSON.stringify(pipeline));
-}
-
-function saveRemovedToStorage() {
-  const ids = JOBS.filter(j => j != null && j.status === 'Removed').map(j => j.id);
-  localStorage.setItem('jb_removed_v1', JSON.stringify(ids));
-}
-
-function loadRemovedFromStorage() {
-  try {
-    const ids = JSON.parse(localStorage.getItem('jb_removed_v1') || '[]');
-    ids.forEach(id => {
-      const job = JOBS.find(j => j != null && j.id === id);
-      if (job) job.status = 'Removed';
-    });
-  } catch(e) {}
-}
-
-function removeCard(jobId) {
-  if (!confirm('Remove this job from your board?')) return;
-  const job = JOBS.find(j => j != null && j.id === jobId);
-  if (!job) return;
-  job.status = 'Removed';
-  saveRemovedToStorage();
-  const sidebarItem = document.getElementById(`sidebar-item-${jobId}`);
-  if (sidebarItem) sidebarItem.remove();
-  updateSidebarVisibility();
-  updateStats();
-  refresh();
-}
-
-function loadPipelineFromStorage() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(PIPELINE_KEY) || '{}');
-    ['Applied', 'Interview', 'Offer'].forEach(status => {
-      (saved[status] || []).forEach(id => {
-        const job = JOBS.find(j => j != null && j.id === id);
-        if (job) job.status = status;
-      });
-    });
-  } catch(e) {}
-}
-
-function updateSidebarVisibility() {
-  const sidebar  = document.getElementById('js-applied-sidebar');
-  const emptyEl  = document.getElementById('js-sidebar-empty');
-  let anyItems   = false;
-
-  ['applied', 'interview', 'offer'].forEach(stage => {
-    const listEl    = document.getElementById(`js-list-${stage}`);
-    const sectionEl = document.getElementById(`js-section-${stage}`);
-    const count     = listEl.querySelectorAll('.sidebar-item').length;
-    document.getElementById(`js-count-${stage}`).textContent = count;
-    sectionEl.style.display = count > 0 ? '' : 'none';
-    if (count > 0) anyItems = true;
-  });
-
-  if (anyItems) {
-    sidebar.classList.add('has-items');
-    emptyEl.style.display = 'none';
-  } else {
-    sidebar.classList.remove('has-items');
-    emptyEl.style.display = '';
-  }
-}
-
-function addToSidebar(job) {
-  const stage  = job.status === 'Interview' ? 'interview' : job.status === 'Offer' ? 'offer' : 'applied';
-  const listEl = document.getElementById(`js-list-${stage}`);
-
-  // Remove existing item (handles moves between sections)
-  const existing = document.getElementById(`sidebar-item-${job.id}`);
-  if (existing) existing.remove();
-
-  const linkBtn = `<button class="sidebar-link" title="Jump to card" data-jump="${job.id}">🔗</button>`;
-
-  let btns = '';
-  if (job.status === 'Applied') {
-    btns = `<button class="sidebar-undo"    title="Undo — move back to To Apply">↩</button>
-            <button class="sidebar-advance" title="Advance to Interview">→ Interview</button>
-            ${linkBtn}`;
-  } else if (job.status === 'Interview') {
-    btns = `<button class="sidebar-regress" title="Move back to Applied">↩</button>
-            <button class="sidebar-advance" title="Advance to Offer">→ Offer</button>
-            ${linkBtn}`;
-  } else if (job.status === 'Offer') {
-    btns = `<button class="sidebar-regress" title="Move back to Interview">↩</button>
-            ${linkBtn}`;
-  }
-
-  const item = document.createElement('div');
-  item.className  = 'sidebar-item';
-  item.id         = `sidebar-item-${job.id}`;
-  item.dataset.id = String(job.id);
-  item.innerHTML  = `
-    <div class="sidebar-logo">${job.logo}</div>
-    <div class="sidebar-info">
-      <div class="sidebar-co">${job.company}</div>
-      <div class="sidebar-role">${job.role}</div>
-    </div>
-    <div class="sidebar-btns">${btns}</div>
-  `;
-  listEl.appendChild(item);
-  updateSidebarVisibility();
-}
-
-function advanceStage(id) {
-  const job = JOBS.find(j => j != null && j.id === id);
-  if (!job) return;
-  if      (job.status === 'Applied')   job.status = 'Interview';
-  else if (job.status === 'Interview') job.status = 'Offer';
-  else return;
-
-  savePipelineToStorage();
-  addToSidebar(job);
-  updateStats();
-  refresh();
-}
-
-function regressStage(id) {
-  const job = JOBS.find(j => j != null && j.id === id);
-  if (!job) return;
-  if      (job.status === 'Offer')     job.status = 'Interview';
-  else if (job.status === 'Interview') job.status = 'Applied';
-  else return;
-
-  savePipelineToStorage();
-  addToSidebar(job);
-  updateStats();
-  refresh();
-}
-
-function markApplied(id, btn) {
-  const card = btn ? btn.closest('.job-card') : document.querySelector(`.job-card[data-id="${id}"]`);
-  const job  = JOBS.find(j => j != null && j.id === id) || JOBS.find(j => j != null && j.id == id);
-  if (!job) return;
-
-  if (btn) { btn.textContent = '✓ Applied!'; btn.disabled = true; }
-
-  job.status = 'Applied';
-  savePipelineToStorage();
-  updateStats();
-
-  if (!document.getElementById(`sidebar-item-${job.id}`)) addToSidebar(job);
-
-  if (card) {
-    card.style.animationDelay = '0s';
-    card.classList.add('is-removing');
-    setTimeout(function() { refresh(); }, 350);
-  } else {
-    refresh();
-  }
-}
-
-function undoApplied(id) {
-  const job = JOBS.find(j => j != null && j.id === id);
-  if (!job || job.status !== 'Applied') return;
-  job.status = 'To Apply';
-  savePipelineToStorage();
-  updateStats();
-  const item = document.getElementById(`sidebar-item-${id}`);
-  if (item) item.remove();
-  updateSidebarVisibility();
-  refresh();
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   EXPORT PIPELINE
-═══════════════════════════════════════════════════════════════════════════ */
-function exportPipeline() {
-  const raw = JSON.parse(localStorage.getItem('jb_pipeline_v1') || '{"Applied":[],"Interview":[],"Offer":[]}');
-  const out = { Applied: [], Interview: [], Offer: [] };
-  ['Applied', 'Interview', 'Offer'].forEach(status => {
-    (raw[status] || []).forEach(id => {
-      const job = JOBS.find(j => j != null && j.id === id);
-      if (job) out[status].push({ id: job.id, company: job.company, role: job.role });
-    });
-  });
-  const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'pipeline.json';
-  a.click();
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   INIT
-═══════════════════════════════════════════════════════════════════════════ */
-document.addEventListener('DOMContentLoaded', () => {
-  try {
-    localStorage.removeItem(APPLIED_KEY);   // nuke legacy key only
-    loadPipelineFromStorage();
-    loadRemovedFromStorage();
-    // Rebuild all 3 sidebar sections from in-memory job statuses
-    ['Applied', 'Interview', 'Offer'].forEach(status =>
-      JOBS.filter(j => j != null && j.status === status).forEach(j => addToSidebar(j))
-    );
-    // Date
-    const d = new Date();
-    document.getElementById('js-date').textContent =
-      d.toLocaleDateString('en-CA', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-
-    // Status filter buttons
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        refresh();
-      });
-    });
-
-    document.getElementById('js-search').addEventListener('input', refresh);
-    document.getElementById('js-fit-toggle').addEventListener('change', refresh);
-    document.getElementById('js-sort').addEventListener('change', refresh);
-
-    document.getElementById('js-reset-btn').addEventListener('click', function() {
-      if (!confirm('Restore all removed jobs and show all ' + JOBS.length + ' roles?')) return;
-      localStorage.removeItem('jb_removed_v1');
-      location.reload();
-    });
-
-    // Sidebar: button-specific handlers for undo, regress, advance, and jump-to-card
-    document.getElementById('js-applied-sidebar').addEventListener('click', function(e) {
-      const linkBtn = e.target.closest('.sidebar-link');
-      if (linkBtn) {
-        const jumpId = linkBtn.dataset.jump;
-        // Switch to All filter if the card isn't currently visible
-        const activeFilter = document.querySelector('.filter-btn.active');
-        if (activeFilter && activeFilter.dataset.status !== 'all') {
-          document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-          document.querySelector('.filter-btn[data-status="all"]').classList.add('active');
-          refresh();
-        }
-        const card = document.querySelector(`.job-card[data-id="${jumpId}"]`);
-        if (card) {
-          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          card.style.transition = 'box-shadow 0.2s';
-          card.style.boxShadow  = '0 0 0 2px #2dd4bf';
-          setTimeout(() => { card.style.boxShadow = ''; }, 1500);
-        }
-        return;
-      }
-      const item = e.target.closest('.sidebar-item');
-      if (!item) return;
-      const id = parseInt(item.dataset.id, 10);
-      if (isNaN(id)) return;
-      if (e.target.closest('.sidebar-undo'))    { undoApplied(id);  return; }
-      if (e.target.closest('.sidebar-regress')) { regressStage(id); return; }
-      if (e.target.closest('.sidebar-advance')) { advanceStage(id); return; }
-    });
-
-    updateStats();
-    refresh();
-  } catch(e) {
-    console.error('DOMContentLoaded setup error:', e);
-  }
-});
-
-// ── Generate Docs ─────────────────────────────────────────────────────────────
-
-function isDirectJobLink(url) {
-  if (!url) return false;
-  let u;
-  try { u = new URL(url); } catch { return false; }
-  const path = u.pathname;
-
-  // Reject: generic career/search pages
-  if (path === '/' || path === '') return false;
-  if (/\/(careers|jobs|work-with-us|current-opportunities)\/?$/i.test(path)) return false;
-  if (/\/about(-us|-[a-z]+)?\/careers\/?$/i.test(path)) return false;
-  if (/\/en\/careers\/?$/i.test(path)) return false;
-  if (/\/career\/[a-z-]+\.html$/i.test(path)) return false;
-  if (/(Careers_External_CA|Raymond_James_Ltd)\/?$/.test(path)) return false;
-  if (/job-search-results|\/search-results[?/]|\/jobs\?q=|\/search\?q=/i.test(url)) return false;
-  if (/ultipro\.(com|ca)\/.*\/JobBoard\//i.test(url) && !url.includes('OpportunityDetail')) return false;
-  if (/wd\d\.myworkdayjobs\.com/i.test(u.hostname) && !/\/job\//i.test(path)) return false;
-  if (/coastcapitalsavings\.com\/go\//i.test(url)) return false;
-
-  // Accept: specific job signals
-  if (/\/\d{5,}(\/|$)/.test(path)) return true;
-  if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(url)) return true;
-  if (/[?&](jid|jl)=[a-z0-9]{6,}/i.test(url)) return true;
-  if (/[?&]id=\d{8,}/.test(url)) return true;
-  if (/wd\d\.myworkdayjobs\.com/i.test(u.hostname) && /\/job\//i.test(path)) return true;
-  if (/\/job\/[A-Z][a-z]+-/i.test(path)) return true;
-  if (/\/job\/[A-Z][A-Z0-9-]{5,}(\/|$)/.test(path)) return true;
-  if (/\/job\/[A-Za-z0-9_-]{25,}$/.test(path)) return true;
-  if (/\/jobs\/view\/[a-z0-9-]+-\d{6,}/i.test(path)) return true;
-  if (/jobposting\/\d+/i.test(url)) return true;
-  if (/workable\.com\/.*\/j\/[A-Z0-9]+/i.test(url)) return true;
-  if (/jobs\.ca\/(job|offer)\/[0-9a-f-]{20,}/i.test(url)) return true;
-  if (/talent\.com\/view\?id=/i.test(url)) return true;
-  if (/careerbeacon\.com\/en\/job(-\d+)?\/\d+/i.test(url)) return true;
-  if (/discovertechnata\.com\/companies\/.*\/jobs\/\d+/i.test(url)) return true;
-  if (/eluta\.ca\/spl\//i.test(url)) return true;
-  if (/tdbank\.jobs\/.*\/[A-F0-9]{10,}\/job\//i.test(url)) return true;
-  if (/eduglobecorp\.com\/.vacancy\/job\//i.test(url)) return true;
-  return false;
-}
-
-async function generateDocs(jobId) {
-  const job = JOBS.find(j => j != null && j.id === jobId);
-  if (!job) return;
-
-  const btn = document.getElementById(`gen-docs-btn-${jobId}`);
-  const setBtn = (label, disabled) => {
-    btn.textContent = label;
-    btn.disabled = disabled;
-    btn.classList.toggle('is-loading', disabled);
-  };
-
-  setBtn('⏳ Generating...', true);
-
-  const signals = job.signals || [];
-  const isT1   = signals.some(s => s.includes('IR/FSR/FA'));
-  const isBig5 = signals.some(s => s.includes('Big 5'));
-  const isCU   = signals.some(s => s.includes('credit union'));
-
-  // First-person tailored summary from job-specific fields
-  const roleName = job.role.split('–')[0].split('(')[0].trim();
-  const coType   = isBig5 ? 'Big 5 bank' : isCU ? 'Metro Vancouver credit union' : 'financial services';
-  const summary  =
-    `Client-focused ${coType} professional with 7+ years of regulated, client-facing experience, ` +
-    `seeking the ${roleName} role at ${job.company}. Currently completing the Canadian Securities Course — ` +
-    `Exam 1 passed, Exam 2 scheduled June 2026; CPH in progress; Federal Income Tax certified (H&R Block, 2025). ` +
-    `MBA (Distinction, UCW 2023); trilingual in English, Khmer, and French; hands-on self-directed investor.`;
-
-  // Competencies — CSC/advisory skills lead for T1 roles, client-service skills lead for support roles
-  const competencies = isT1 ? [
-    'Canadian Securities Course (CSC) — Exam 1 Passed; Exam 2 June 2026',
-    'Banking Solutions & Financial Products Awareness',
-    'Client Relationship Building & Needs Assessment',
-    'Regulatory Compliance & Confidentiality',
-    'Federal Income Tax Certified — H&R Block (2025)',
-    'Problem Resolution & Issue Escalation',
-    'Multi-Channel Client Service (Phone, Email, In-Person)',
-    'MS Office Suite: Word, Excel (Advanced), Outlook',
-    'CRM Platforms: Zoho CRM, Kroll, ImmsBC',
-    'Trilingual: English, Khmer, French',
-  ] : [
-    'Client Relationship Building & Needs Assessment',
-    'Multi-Channel Client Service (Phone, Email, In-Person)',
-    'Canadian Securities Course (CSC) — Exam 1 Passed; Exam 2 June 2026',
-    'Regulatory Compliance & Confidentiality',
-    'Cash & Non-Cash Transaction Support',
-    'Problem Resolution & Issue Escalation',
-    'Federal Income Tax Certified — H&R Block (2025)',
-    'MS Office Suite: Word, Excel (Advanced), Outlook',
-    'CRM Platforms: Zoho CRM, Kroll, ImmsBC',
-    'Trilingual: English, Khmer, French',
-  ];
-
-  // Cover letter — 3 paragraphs, job.hook drives the opening line
-  const coShort   = job.company.split('(')[0].trim();
-  const coNetwork = isBig5 ? `${coShort}'s branch network` : isCU ? `${coShort}'s member advisory model` : `${coShort}'s team`;
-  const hookCore  = (job.hook || '').replace(/^I'm currently/, 'I am currently');
-  const coverLetter = [
-    `I am writing to express my strong interest in the ${roleName} position at ${coShort}. ${hookCore}`,
-    `My background combines 7+ years of regulated, client-facing experience with active financial credentials. ` +
-    `At Dhiman & Company, I guided clients through CRA-regulated filing processes — applying legislation, preparing T1/T2 returns, ` +
-    `and maintaining audit-ready documentation under strict confidentiality. At TLC Healthcare, I managed 50+ daily interactions ` +
-    `across compliance-sensitive platforms, building the accuracy, discretion, and client empathy that ${coNetwork} requires.`,
-    `I am eager to bring my credentials to ${coShort} and grow within the advisory track as I complete my CSC licensing in June 2026. ` +
-    `I welcome the opportunity to discuss how my background aligns with this role. Thank you for your consideration.`,
-  ];
-
-  setBtn('📄 Generate Docs', false);
-  showGenDocsModal(job, {
-    job_requirements_found: signals.length ? signals.join(' · ') : job.whyFit,
-    summary,
-    competencies,
-    experience: _BASE_EXPERIENCE,
-    cover_letter: coverLetter,
-  }, null);
-}
-
-// ── Modal ─────────────────────────────────────────────────────────────────────
-
-(function injectGenDocsModal() {
-  const modal = document.createElement('div');
-  modal.id = 'gen-docs-modal';
-  modal.style.cssText = 'display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.72);align-items:center;justify-content:center;';
-  modal.onclick = e => { if (e.target === modal) closeGenDocsModal(); };
-  modal.innerHTML = `
-    <div style="background:#111827;border:1px solid rgba(255,255,255,0.1);border-radius:10px;width:min(660px,92vw);max-height:88vh;overflow-y:auto;padding:28px 32px;position:relative;box-shadow:0 24px 64px rgba(0,0,0,0.6);">
-      <button onclick="closeGenDocsModal()" style="position:absolute;top:14px;right:18px;background:none;border:none;color:#9ca3af;font-size:1.4rem;cursor:pointer;line-height:1;">×</button>
-      <div style="margin-bottom:18px;">
-        <div id="gdm-title" style="font-size:1.05rem;font-weight:700;color:#f9fafb;margin-bottom:4px;"></div>
-        <div id="gdm-company" style="font-size:0.82rem;color:#6b7280;"></div>
-      </div>
-      <div id="gdm-error" style="display:none;color:#f87171;font-size:0.88rem;padding:14px;background:rgba(239,68,68,0.08);border-radius:6px;margin-bottom:16px;"></div>
-      <div id="gdm-body" style="display:none;">
-        <div style="margin-bottom:16px;">
-          <div style="font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#2dd4bf;margin-bottom:6px;">Job Fit Signals</div>
-          <div id="gdm-requirements" style="font-size:0.88rem;color:#d1d5db;line-height:1.6;background:rgba(45,212,191,0.05);border-left:2px solid rgba(45,212,191,0.4);padding:10px 14px;border-radius:0 4px 4px 0;"></div>
-        </div>
-        <div style="margin-bottom:22px;">
-          <div style="font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Tailored Summary Preview</div>
-          <div id="gdm-summary" style="font-size:0.88rem;color:#d1d5db;line-height:1.6;font-style:italic;"></div>
-        </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <button id="gdm-dl-resume" onclick="downloadDocxResume()" style="flex:1;min-width:200px;padding:10px 16px;background:rgba(45,212,191,0.1);border:1px solid rgba(45,212,191,0.4);color:#2dd4bf;border-radius:5px;font-size:0.75rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:background 0.15s;">⬇ Resume</button>
-          <button id="gdm-dl-cl" onclick="downloadDocxCoverLetter()" style="flex:1;min-width:200px;padding:10px 16px;background:rgba(45,212,191,0.1);border:1px solid rgba(45,212,191,0.4);color:#2dd4bf;border-radius:5px;font-size:0.75rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:background 0.15s;">⬇ Cover Letter</button>
-        </div>
-      </div>
-    </div>`;
-  document.body.appendChild(modal);
-})();
-
-let _gdmJob = null;
-let _gdmParsed = null;
-
-function showGenDocsModal(job, parsed, errorMsg) {
-  _gdmJob = job;
-  _gdmParsed = parsed;
-
-  document.getElementById('gdm-title').textContent = job.role;
-  document.getElementById('gdm-company').textContent =
-    job.company + (job.location ? '  ·  ' + job.location : '');
-
-  const errEl  = document.getElementById('gdm-error');
-  const bodyEl = document.getElementById('gdm-body');
-
-  if (errorMsg) {
-    errEl.textContent = 'Could not fetch job description from this URL: ' + errorMsg;
-    errEl.style.display = 'block';
-    bodyEl.style.display = 'none';
-  } else {
-    errEl.style.display = 'none';
-    bodyEl.style.display = 'block';
-    document.getElementById('gdm-requirements').textContent = parsed.job_requirements_found || '';
-    document.getElementById('gdm-summary').textContent = parsed.summary || '';
-    const slug = docxSlug(job.company, job.role);
-    document.getElementById('gdm-dl-resume').textContent = `⬇ Resume-Sarik-Eng-${slug}.docx`;
-    document.getElementById('gdm-dl-cl').textContent     = `⬇ Cover-Letter-Sarik-Eng-${slug}.docx`;
-  }
-
-  const modal = document.getElementById('gen-docs-modal');
-  modal.style.display = 'flex';
-}
-
-function closeGenDocsModal() {
-  document.getElementById('gen-docs-modal').style.display = 'none';
-}
-
-function docxSlug(company, role) {
-  return [company, role]
-    .join('-')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/-{2,}/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 60);
-}
-
-function triggerDownload(blob, filename) {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
-}
-
-// ── docx builders ─────────────────────────────────────────────────────────────
-
-const _BASE_EXPERIENCE = {
-  'Dhiman & Company Inc.': [
-    'Guided clients through complex regulated CRA filing processes via phone and email, explaining requirements and timelines from intake to completion',
-    'Applied legislation to assess client eligibility, explain financial obligations, and prepare accurate T1/T2 returns and GST/HST reconciliations',
-    'Maintained audit-ready documentation under strict confidentiality standards; resolved discrepancies in client financial records before filing',
-  ],
-  'TLC Healthcare Services Inc.': [
-    'Managed 50+ daily client interactions via phone and in-person in a regulated environment; resolved issues in real time and escalated complex cases',
-    'Maintained patient records across two regulated platforms (Kroll, ImmsBC); performed data entry and ensured file integrity across all active accounts',
-    'Exercised good judgement in confidential matters and applied patience and tact consistently with clients from diverse backgrounds',
-  ],
-  'Running Room': [
-    'Operated store independently; assessed individual customer needs through targeted questions and delivered confident, tailored recommendations',
-    'Built repeat customer relationships through consistent, knowledgeable, and personalized service interactions',
-  ],
-  'The Home Depot': [
-    'Provided in-person, phone, and online customer support in a high-volume retail environment; used internal systems for order management and inventory tracking daily',
-  ],
-  'Two Roads Retail Specialist Inc.': [
-    'Led day-to-day operations including staff scheduling, performance reviews, and sales reporting with minimal supervision',
-    'Promoted digital data capture at point of sale above company average; trained team on customer engagement standards',
-  ],
-  'Vattanac Properties': [
-    'Managed B2B and B2C client accounts through structured follow-up and relationship-building; prepared budget proposals and collaborated cross-functionally with leadership',
-  ],
-  'Naki Group': [
-    'Built client and vendor portfolio from launch; negotiated multi-region contracts and trained internal team on client service standards',
-  ],
-  'AboutAsia Travel': [
-    'Sold customized packages to international clients via phone and email; resolved complaints and refund requests with discretion to protect client relationships',
-  ],
-};
-
-const _EXP_META = [
-  { key: 'Dhiman & Company Inc.',          title: 'Tax Preparer & Customer Representative (Contract Full-time)', loc: 'Dhiman & Company Inc., Richmond, BC',                      dates: 'Jan 2026 – May 2026'    },
-  { key: 'TLC Healthcare Services Inc.',   title: 'Customer Service Representative (Full-time)',                 loc: 'TLC Healthcare Services Inc., Parksville, BC',             dates: 'Oct 2023 – Dec 2025'    },
-  { key: 'Running Room',                   title: 'Sales Associate (Part-Time)',                                 loc: 'Running Room, Richmond, BC',                               dates: 'Oct 2024 – Dec 2025'    },
-  { key: 'The Home Depot',                 title: 'Sales Associate (Part-Time)',                                 loc: 'The Home Depot, West Vancouver & Nanaimo, BC',             dates: 'Mar 2022 – Oct 2025'    },
-  { key: 'Two Roads Retail Specialist Inc.', title: 'Store Manager (Seasonal)',                                  loc: 'Two Roads Retail Specialist Inc., West Vancouver, BC',     dates: 'Aug – Oct 2023'         },
-  { key: 'Vattanac Properties',            title: 'Sales & Marketing Manager (Full-time)',                       loc: 'Vattanac Properties (The Atom), Phnom Penh, Cambodia',     dates: 'Jan – Dec 2021'         },
-  { key: 'Naki Group',                     title: 'Business Development Manager (Full-time)',                    loc: 'Naki Group (Cira Arthika Tourism), Cambodia',               dates: 'Jun 2019 – Jan 2021'    },
-  { key: 'AboutAsia Travel',               title: 'Sales Manager (Full-time)',                                   loc: 'AboutAsia Travel, Siem Reap, Cambodia',                     dates: 'Jan 2014 – Oct 2016'    },
-];
-
-async function downloadDocxResume() {
-  if (!_gdmJob || !_gdmParsed) return;
-  try {
-  const { Document, Packer, Paragraph, TextRun, AlignmentType,
-          Table, TableRow, TableCell, WidthType } = docx;
-
-  const p = _gdmParsed;
-  const exp = p.experience || {};
-
-  const noBorder = { style: 'none', size: 0, color: 'FFFFFF' };
-  const allNoBorder = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideH: noBorder, insideV: noBorder };
-
-  function sHead(text) {
-    return new Paragraph({
-      children: [new TextRun({ text, bold: true, size: 22, color: '1a237e' })],
-      thematicBreak: true,
-      spacing: { before: 240, after: 80 },
-    });
-  }
-
-  const comps = p.competencies || [];
-  const tableRows = [];
-  for (let i = 0; i < comps.length; i += 2) {
-    tableRows.push(new TableRow({ children: [
-      new TableCell({ borders: allNoBorder, width: { size: 50, type: WidthType.PERCENTAGE },
-        children: [new Paragraph({ children: [new TextRun({ text: `▪  ${comps[i] || ''}`, size: 19 })] })] }),
-      new TableCell({ borders: allNoBorder, width: { size: 50, type: WidthType.PERCENTAGE },
-        children: [new Paragraph({ children: [new TextRun({ text: comps[i+1] ? `▪  ${comps[i+1]}` : '', size: 19 })] })] }),
-    ]}));
-  }
-
-  const children = [
-    new Paragraph({ alignment: AlignmentType.CENTER,
-      children: [new TextRun({ text: 'SARIK ENG', bold: true, size: 40, color: '1a237e' })],
-      spacing: { after: 60 } }),
-    new Paragraph({ alignment: AlignmentType.CENTER,
-      children: [new TextRun({ text: 'Richmond, BC  ·  236-513-1896  ·  sarikc2@gmail.com  ·  Permanent Resident of Canada', size: 18, color: '555555' })],
-      spacing: { after: 200 } }),
-
-    sHead('PROFESSIONAL SUMMARY'),
-    new Paragraph({ text: p.summary || '', spacing: { after: 160 } }),
-
-    sHead('CORE COMPETENCIES'),
-    ...(tableRows.length ? [new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: tableRows }),
-      new Paragraph({ text: '', spacing: { after: 80 } })] : []),
-
-    sHead('PROFESSIONAL EXPERIENCE'),
-    ..._EXP_META.flatMap(e => {
-      const bullets = exp[e.key] || [];
-      if (!bullets.length) return [];
-      return [
-        new Paragraph({ children: [new TextRun({ text: `${e.title}  |  ${e.loc}`, bold: true, size: 20 })], spacing: { before: 140, after: 40 } }),
-        new Paragraph({ children: [new TextRun({ text: e.dates, italics: true, size: 19, color: '555555' })], spacing: { after: 60 } }),
-        ...bullets.map(b => new Paragraph({ children: [new TextRun({ text: `•  ${b}`, size: 19 })], indent: { left: 360 }, spacing: { after: 60 } })),
-      ];
-    }),
-
-    sHead('EDUCATION & TRAINING'),
-    ...[
-      'MBA (Distinction)  |  University Canada West, Vancouver, BC  |  Jan 2022 – Jul 2023',
-      'Web Development Bootcamp  |  BrainStation, Vancouver, BC  |  Apr – Jun 2023',
-      'Master of Tourism Management  |  Victoria University of Wellington, NZ  |  Mar 2017 – Apr 2019  (NZ Government Scholarship)',
-      'Bachelor of Business Administration  |  National University of Management, Cambodia  |  Sep 2007 – Oct 2011',
-    ].map(t => new Paragraph({ text: t, spacing: { after: 80 } })),
-
-    sHead('CERTIFICATIONS & FINANCIAL KNOWLEDGE'),
-    ...[
-      'Canadian Securities Course (CSC): Exam 1 passed; Exam 2 scheduled June 2026',
-      'Federal Income Tax Level 1 — H&R Block (Completed December 2025)',
-      'MS Office Suite: Word, Excel (Advanced), Outlook — daily professional use',
-      'CRM & Platforms: Zoho CRM, Kroll, ImmsBC; Trilingual: English, Khmer, French',
-    ].map(t => new Paragraph({ children: [new TextRun({ text: `•  ${t}`, size: 19 })], indent: { left: 360 }, spacing: { after: 60 } })),
-  ];
-
-  const doc = new Document({ sections: [{ children }] });
-  const blob = await Packer.toBlob(doc);
-  triggerDownload(blob, `Resume-Sarik-Eng-${docxSlug(_gdmJob.company, _gdmJob.role)}.docx`);
-  } catch(e) {
-    console.error('docx generation error:', e);
-    alert('Error generating document: ' + e.message);
-  }
-}
-
-async function downloadDocxCoverLetter() {
-  if (!_gdmJob || !_gdmParsed) return;
-  try {
-  const { Document, Packer, Paragraph, TextRun, AlignmentType } = docx;
-
-  const today = new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' });
-  const paras = _gdmParsed.cover_letter || [];
-
-  const children = [
-    new Paragraph({ alignment: AlignmentType.RIGHT,
-      children: [new TextRun({ text: today, size: 20 })], spacing: { after: 280 } }),
-    new Paragraph({ children: [new TextRun({ text: 'Hiring Manager', bold: true })], spacing: { after: 40 } }),
-    new Paragraph({ children: [new TextRun({ text: _gdmJob.company })], spacing: { after: 40 } }),
-    new Paragraph({ children: [new TextRun({ text: _gdmJob.location || '' })], spacing: { after: 280 } }),
-    new Paragraph({ children: [new TextRun({ text: `Re: ${_gdmJob.role}`, italics: true })], spacing: { after: 280 } }),
-    ...paras.map(p => new Paragraph({ text: p, spacing: { after: 200 } })),
-    new Paragraph({ text: 'Sincerely,', spacing: { before: 280, after: 280 } }),
-    new Paragraph({ children: [new TextRun({ text: 'Sarik Eng', bold: true })], spacing: { after: 60 } }),
-    new Paragraph({ text: '236-513-1896  |  sarikc2@gmail.com' }),
-  
+    
   {
     id: 95,
     company: "Sharons Credit Union",
@@ -5881,7 +4890,998 @@ async function downloadDocxCoverLetter() {
     whyFit: "This IR/FSR/FA level role at a firm aligns with Sarik's CSC-in-progress profile and MBA. Salary approaches the $50K floor. Entry-level framing or training program makes it achievable without full CSC at hire.",
     hook: "I'm currently completing my CSC (Exam 2 in June 2026) and hold an MBA with Distinction — I'd love to discuss how I can contribute to PWL Capital's Financial Advisor / Planner team.",
   },
+
 ];
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════════════════════════════ */
+function scoreClass(n) {
+  if (n >= 85) return 'score-s';
+  if (n >= 70) return 'score-a';
+  if (n >= 50) return 'score-b';
+  return 'score-c';
+}
+
+function arrClass(a) {
+  return { 'Hybrid': 'hybrid', 'On-site': 'onsite', 'Remote': 'remote' }[a] || 'onsite';
+}
+
+function empClass(e) {
+  return (e || '').startsWith('Part') ? 'parttime' : 'fulltime';
+}
+
+function statusClass(s) {
+  return { 'To Apply': 'st-toapply', 'Applied': 'st-applied', 'Interview': 'st-interview', 'Offer': 'st-offer' }[s] || 'st-toapply';
+}
+
+function postedLabel(d) {
+  if (d === 0) return 'Today';
+  if (d === 1) return 'Yesterday';
+  if (d < 7)  return `${d} days ago`;
+  const w = Math.floor(d / 7);
+  return `${w} week${w > 1 ? 's' : ''} ago`;
+}
+
+function parseSalary(s) {
+  const m = s.replace(/[^0-9]/g, '');
+  return parseInt(m) || 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PROMPT BUILDER
+═══════════════════════════════════════════════════════════════════════════ */
+function buildPrompt(job) {
+  const signals = job.signals.map(s => `  • ${s}`).join('\n');
+  const dbNote = job.dealbreaker
+    ? `\n⚠️  DEALBREAKER FLAGS:\n${job.dealbreakersTriggered.map(d => `  • ${d}`).join('\n')}\nProceed only if compensation and lead structure can be confirmed otherwise.\n`
+    : '';
+
+  return `I'm building my application for the role below. Please help me create a complete, tailored application package.
+
+════════════════════════════════════════════════════
+ROLE:       ${job.role}
+COMPANY:    ${job.company}
+LOCATION:   ${job.location} (${job.arrangement})
+SALARY:     ${job.salary}
+FIT SCORE:  ${job.fitScore}/100
+POSTED:     ${postedLabel(job.daysAgo)}
+${dbNote}
+════════════════════════════════════════════════════
+
+MY PROFILE:
+${MY_PROFILE}
+
+KEY JD SIGNALS TO ADDRESS:
+${signals}
+
+WHY I'M A FIT (use as positioning):
+${job.whyFit}
+
+RECOMMENDED OUTREACH HOOK:
+${job.hook}
+
+════════════════════════════════════════════════════
+PLEASE DELIVER ALL OF THE FOLLOWING:
+
+1. COVER LETTER
+   Three tight, tailored paragraphs for ${job.company}. Open with the hook above.
+   No filler openers ("I am writing to express…"). Be direct and confident.
+
+2. RESUME BULLET REWRITES
+   Three bullet point rewrites from my experience that better match this JD's
+   language, keywords, and requirements. Focus on TLC Healthcare and Dhiman & Co.
+
+3. LINKEDIN OUTREACH MESSAGE
+   A connection request to a hiring manager or recruiter at ${job.company}.
+   Under 300 characters. Warm, specific, not generic.
+
+4. INTERVIEW PREP
+   Three likely screening questions based on the JD signals above, each with
+   a suggested answer framework (STAR format where relevant).
+
+5. ONE COMPANY RESEARCH TIP
+   One specific thing to look up about ${job.company} before the interview
+   that will make me stand out — not generic ("read their website") advice.
+════════════════════════════════════════════════════`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STATS
+═══════════════════════════════════════════════════════════════════════════ */
+function updateStats() {
+  const total      = JOBS.filter(j => j != null && j.status !== 'Removed').length;
+  const applied    = JOBS.filter(j => j != null && j.status === 'Applied').length;
+  const interviews = JOBS.filter(j => j != null && j.status === 'Interview').length;
+  const clean      = JOBS.filter(j => j != null && !j.dealbreaker);
+  const top        = clean.reduce((a, b) => b.fitScore > a.fitScore ? b : a, clean[0]);
+
+  document.getElementById('js-total').textContent      = total;
+  document.getElementById('js-applied').textContent    = applied;
+  document.getElementById('js-interviews').textContent = interviews;
+  document.getElementById('js-top-score').textContent  = top.fitScore;
+  document.getElementById('js-top-co').textContent     = top.company;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════════════════════════════════════ */
+const COMPANY_PALETTE = [
+  '#E05A5A',  // coral red
+  '#E07828',  // burnt orange
+  '#D4A820',  // amber gold
+  '#B8C830',  // chartreuse
+  '#48C85A',  // green
+  '#28B89A',  // teal
+  '#28A8C8',  // cyan
+  '#3880E0',  // blue
+  '#5858E0',  // indigo
+  '#8848D0',  // purple
+  '#C038A8',  // violet
+  '#E03878',  // hot pink
+  '#E87050',  // terra cotta
+  '#50C890',  // mint
+  '#50A8E8',  // sky blue
+  '#9870E0',  // lavender
+  '#E0A040',  // caramel
+  '#60B040',  // lime
+  '#3898B0',  // teal blue
+  '#D06070',  // rose
+];
+const _companyColorMap = (() => {
+  const map = {};
+  let i = 0;
+  JOBS.forEach(j => { if (!map[j.company]) map[j.company] = COMPANY_PALETTE[i++ % COMPANY_PALETTE.length]; });
+  return map;
+})();
+function _hexRgb(h) {
+  return `${parseInt(h.slice(1,3),16)},${parseInt(h.slice(3,5),16)},${parseInt(h.slice(5,7),16)}`;
+}
+
+function renderCard(job, idx) {
+  const sc  = scoreClass(job.fitScore);
+  const ac  = arrClass(job.arrangement);
+  const stc = statusClass(job.status);
+
+  const dbBanner = job.dealbreaker
+    ? `<div class="db-banner">⚠ Dealbreaker flags · ${job.dealbreakersTriggered.join(' · ')}</div>`
+    : '';
+
+  const signalsHtml = job.signals.map(s => `<li>${s}</li>`).join('');
+
+  return `
+  <div class="job-card ${job.dealbreaker ? 'is-dealbreaker' : ''}"
+       data-id="${job.id}"
+       data-status="${job.status}"
+       data-fit="${job.fitScore}"
+       data-co="${job.company.toLowerCase()}"
+       data-role="${job.role.toLowerCase()}"
+       data-signals="${job.signals.join(' ').toLowerCase()}"
+       onmouseenter="hlCo(this)" onmouseleave="unhlCo()"
+       style="--co-rgb:${_hexRgb(_companyColorMap[job.company]||'#8888AA')};animation-delay:${idx * 0.055}s;background:linear-gradient(to right,rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0.45) 0%,rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0.10) 30%,rgba(${_hexRgb(_companyColorMap[job.company]||'#8888AA')},0) 55%);border-left:4px solid ${_companyColorMap[job.company]||'#8888AA'}">
+    <button class="btn-remove-card" onclick="removeCard(${job.id}); event.stopPropagation();" title="Remove this job">✕</button>
+    <span class="card-rank">#${idx + 1}</span>
+    ${dbBanner}
+    <div class="card-body">
+      <div class="card-top">
+        <div class="co-logo">${job.logo}</div>
+        <div class="card-title-block">
+          <div class="co-name">${job.company}</div>
+          <div class="role-title">${job.role}</div>
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="chip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+          </svg>
+          ${job.location}
+        </span>
+        <span class="sep">·</span>
+        <span class="badge ${ac}">${job.arrangement}</span>
+        <span class="sep">·</span>
+        <span class="badge ${empClass(job.employment)}">${job.employment || 'Full-Time'}</span>
+        <span class="sep">·</span>
+        <span class="chip">${postedLabel(job.daysAgo)}</span>
+      </div>
+      <div class="card-row">
+        <div class="salary">${job.salary}</div>
+        ${job.url
+          ? `<a class="source-tag source-link" href="${job.url}" target="_blank" rel="noopener">${job.source} ↗</a>`
+          : `<div class="source-tag">${job.source}</div>`}
+      </div>
+      <div class="fit-wrap">
+        <div class="fit-header">
+          <span class="fit-label-text">Fit Score</span>
+          <span class="fit-number ${sc}">${job.fitScore}<sub>/100</sub></span>
+        </div>
+        <div class="fit-track">
+          <div class="fit-fill ${sc}" data-w="${job.fitScore}"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <div class="footer-actions">
+        <button class="btn-pos" id="pos-btn-${job.id}" onclick="togglePanel(${job.id})">Why I Fit ↓</button>
+        ${job.status === 'To Apply'
+          ? `<button class="btn-mark-applied" id="applied-btn-${job.id}" onclick="markApplied(${job.id}, this)">Mark Apply</button>`
+          : (job.status === 'Applied' || job.status === 'Interview' || job.status === 'Offer')
+          ? `<button class="btn-mark-applied" id="applied-btn-${job.id}" disabled style="opacity:0.45;cursor:default">✓ Applied</button>`
+          : ''}
+        ${job.url
+          ? `<a class="btn-apply" href="${job.url}" target="_blank" rel="noopener">Apply Now →</a>`
+          : `<span class="btn-apply btn-apply-none">No Link</span>`}
+        ${job.status === 'To Apply' && isDirectJobLink(job.url)
+          ? `<button class="btn-gen-docs" id="gen-docs-btn-${job.id}" onclick="generateDocs(${job.id})">📄 Generate Docs</button>`
+          : ''}
+      </div>
+    </div>
+    <div class="pos-panel" id="pos-panel-${job.id}">
+      <div class="pos-inner">
+        <div>
+          <div class="pos-section-title">Why I'm a Fit</div>
+          <div class="pos-text">${job.whyFit}</div>
+        </div>
+        <div>
+          <div class="pos-section-title">Key JD Signals</div>
+          <ul class="signal-list">${signalsHtml}</ul>
+        </div>
+        <div class="hook-box">
+          <div class="hook-label">Recommended Hook for Outreach &amp; Screening</div>
+          <div class="hook-text">${job.hook}</div>
+          <button class="btn-copy-prompt" id="copy-btn-${job.id}" onclick="copyPrompt(${job.id})">📋 Copy AI Application Prompt</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderGrid(list) {
+  const grid  = document.getElementById('js-grid');
+  const empty = document.getElementById('js-empty');
+
+  if (list.length === 0) {
+    grid.innerHTML = '';
+    grid.appendChild(empty);
+    empty.classList.add('show');
+  } else {
+    grid.innerHTML = list.map((j, i) => renderCard(j, i)).join('');
+    empty.classList.remove('show');
+    grid.appendChild(empty);
+    animateBars();
+  }
+
+  document.getElementById('js-count').textContent = list.length;
+}
+
+function animateBars() {
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.fit-fill').forEach((bar, i) => {
+      const target = bar.dataset.w + '%';
+      setTimeout(() => { bar.style.width = target; }, 80 + i * 50);
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FILTER + SORT
+═══════════════════════════════════════════════════════════════════════════ */
+function getFiltered() {
+  const q      = document.getElementById('js-search').value.toLowerCase().trim();
+  const status = document.querySelector('.filter-btn.active').dataset.status;
+  const fitMin = document.getElementById('js-fit-toggle').checked;
+  const sort   = document.getElementById('js-sort').value;
+
+  let list = JOBS.filter(j => {
+    if (!j || j.status === 'Removed') return false;
+    const matchQ   = !q || j.company.toLowerCase().includes(q) || j.role.toLowerCase().includes(q) || j.signals.some(s => s.toLowerCase().includes(q));
+    const matchSt  = status === 'all' || j.status === status;
+    const matchFit = !fitMin || j.fitScore >= 70;
+    return matchQ && matchSt && matchFit;
+  });
+
+  list.sort((a, b) => {
+    // Pipeline jobs (Applied / Interview / Offer) always sink below active To Apply jobs
+    const aP = (a.status === 'Applied' || a.status === 'Interview' || a.status === 'Offer') ? 1 : 0;
+    const bP = (b.status === 'Applied' || b.status === 'Interview' || b.status === 'Offer') ? 1 : 0;
+    if (aP !== bP) return aP - bP;
+    // Within each group apply the chosen sort
+    if (sort === 'company') return a.company.localeCompare(b.company) || b.fitScore - a.fitScore;
+    if (sort === 'date')    return a.daysAgo - b.daysAgo || b.fitScore - a.fitScore;
+    if (sort === 'salary')  return parseSalary(b.salary) - parseSalary(a.salary) || b.fitScore - a.fitScore;
+    // Default (fit): highest fit score first, newest posting as tiebreaker
+    return b.fitScore - a.fitScore || a.daysAgo - b.daysAgo;
+  });
+
+  return list;
+}
+
+function refresh() { renderGrid(getFiltered()); }
+
+function hlCo(card) {
+  const co = card.dataset.co;
+  document.querySelectorAll(`.job-card[data-co="${co}"]`).forEach(c => {
+    if (c !== card) c.classList.add('co-sibling');
+  });
+}
+function unhlCo() {
+  document.querySelectorAll('.job-card.co-sibling').forEach(c => c.classList.remove('co-sibling'));
+}
+document.addEventListener('mouseleave', unhlCo);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INTERACTIONS
+═══════════════════════════════════════════════════════════════════════════ */
+function togglePanel(id) {
+  const panel = document.getElementById(`pos-panel-${id}`);
+  const btn   = document.getElementById(`pos-btn-${id}`);
+  if (!panel) return;
+  panel.classList.toggle('open');
+  btn.classList.toggle('open');
+  btn.textContent = panel.classList.contains('open') ? 'Why I Fit ↑' : 'Why I Fit ↓';
+}
+
+function copyPrompt(id) {
+  const job = JOBS.find(j => j.id === id);
+  if (!job) return;
+
+  const text = buildPrompt(job);
+  const btn  = document.getElementById(`copy-btn-${id}`);
+
+  const markCopied = () => {
+    if (btn) { btn.textContent = '✓ Copied!'; btn.classList.add('copied'); }
+    showToast();
+    setTimeout(() => {
+      if (btn) { btn.textContent = '📋 Copy AI Application Prompt'; btn.classList.remove('copied'); }
+    }, 2500);
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(markCopied).catch(() => fallbackCopy(text, markCopied));
+  } else {
+    fallbackCopy(text, markCopied);
+  }
+}
+
+function fallbackCopy(text, cb) {
+  const ta = Object.assign(document.createElement('textarea'), {
+    value: text, style: 'position:fixed;opacity:0'
+  });
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try { document.execCommand('copy'); cb(); } catch(e) {}
+  document.body.removeChild(ta);
+}
+
+function showToast() {
+  const t = document.getElementById('js-toast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3800);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PIPELINE TRACKING  (Applied → Interview → Offer)
+═══════════════════════════════════════════════════════════════════════════ */
+const APPLIED_KEY  = 'jb_applied_v2';   // kept for cleanup on load
+const PIPELINE_KEY = 'jb_pipeline_v1';
+
+function savePipelineToStorage() {
+  const pipeline = {
+    Applied:   JOBS.filter(j => j != null && j.status === 'Applied').map(j => j.id),
+    Interview: JOBS.filter(j => j != null && j.status === 'Interview').map(j => j.id),
+    Offer:     JOBS.filter(j => j != null && j.status === 'Offer').map(j => j.id),
+  };
+  localStorage.setItem(PIPELINE_KEY, JSON.stringify(pipeline));
+}
+
+function saveRemovedToStorage() {
+  const ids = JOBS.filter(j => j != null && j.status === 'Removed').map(j => j.id);
+  localStorage.setItem('jb_removed_v1', JSON.stringify(ids));
+}
+
+function loadRemovedFromStorage() {
+  try {
+    const ids = JSON.parse(localStorage.getItem('jb_removed_v1') || '[]');
+    ids.forEach(id => {
+      const job = JOBS.find(j => j != null && j.id === id);
+      if (job) job.status = 'Removed';
+    });
+  } catch(e) {}
+}
+
+function removeCard(jobId) {
+  if (!confirm('Remove this job from your board?')) return;
+  const job = JOBS.find(j => j != null && j.id === jobId);
+  if (!job) return;
+  job.status = 'Removed';
+  saveRemovedToStorage();
+  const sidebarItem = document.getElementById(`sidebar-item-${jobId}`);
+  if (sidebarItem) sidebarItem.remove();
+  updateSidebarVisibility();
+  updateStats();
+  refresh();
+}
+
+function loadPipelineFromStorage() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PIPELINE_KEY) || '{}');
+    ['Applied', 'Interview', 'Offer'].forEach(status => {
+      (saved[status] || []).forEach(id => {
+        const job = JOBS.find(j => j != null && j.id === id);
+        if (job) job.status = status;
+      });
+    });
+  } catch(e) {}
+}
+
+function updateSidebarVisibility() {
+  const sidebar  = document.getElementById('js-applied-sidebar');
+  const emptyEl  = document.getElementById('js-sidebar-empty');
+  let anyItems   = false;
+
+  ['applied', 'interview', 'offer'].forEach(stage => {
+    const listEl    = document.getElementById(`js-list-${stage}`);
+    const sectionEl = document.getElementById(`js-section-${stage}`);
+    const count     = listEl.querySelectorAll('.sidebar-item').length;
+    document.getElementById(`js-count-${stage}`).textContent = count;
+    sectionEl.style.display = count > 0 ? '' : 'none';
+    if (count > 0) anyItems = true;
+  });
+
+  if (anyItems) {
+    sidebar.classList.add('has-items');
+    emptyEl.style.display = 'none';
+  } else {
+    sidebar.classList.remove('has-items');
+    emptyEl.style.display = '';
+  }
+}
+
+function addToSidebar(job) {
+  const stage  = job.status === 'Interview' ? 'interview' : job.status === 'Offer' ? 'offer' : 'applied';
+  const listEl = document.getElementById(`js-list-${stage}`);
+
+  // Remove existing item (handles moves between sections)
+  const existing = document.getElementById(`sidebar-item-${job.id}`);
+  if (existing) existing.remove();
+
+  const linkBtn = `<button class="sidebar-link" title="Jump to card" data-jump="${job.id}">🔗</button>`;
+
+  let btns = '';
+  if (job.status === 'Applied') {
+    btns = `<button class="sidebar-undo"    title="Undo — move back to To Apply">↩</button>
+            <button class="sidebar-advance" title="Advance to Interview">→ Interview</button>
+            ${linkBtn}`;
+  } else if (job.status === 'Interview') {
+    btns = `<button class="sidebar-regress" title="Move back to Applied">↩</button>
+            <button class="sidebar-advance" title="Advance to Offer">→ Offer</button>
+            ${linkBtn}`;
+  } else if (job.status === 'Offer') {
+    btns = `<button class="sidebar-regress" title="Move back to Interview">↩</button>
+            ${linkBtn}`;
+  }
+
+  const item = document.createElement('div');
+  item.className  = 'sidebar-item';
+  item.id         = `sidebar-item-${job.id}`;
+  item.dataset.id = String(job.id);
+  item.innerHTML  = `
+    <div class="sidebar-logo">${job.logo}</div>
+    <div class="sidebar-info">
+      <div class="sidebar-co">${job.company}</div>
+      <div class="sidebar-role">${job.role}</div>
+    </div>
+    <div class="sidebar-btns">${btns}</div>
+  `;
+  listEl.appendChild(item);
+  updateSidebarVisibility();
+}
+
+function advanceStage(id) {
+  const job = JOBS.find(j => j != null && j.id === id);
+  if (!job) return;
+  if      (job.status === 'Applied')   job.status = 'Interview';
+  else if (job.status === 'Interview') job.status = 'Offer';
+  else return;
+
+  savePipelineToStorage();
+  addToSidebar(job);
+  updateStats();
+  refresh();
+}
+
+function regressStage(id) {
+  const job = JOBS.find(j => j != null && j.id === id);
+  if (!job) return;
+  if      (job.status === 'Offer')     job.status = 'Interview';
+  else if (job.status === 'Interview') job.status = 'Applied';
+  else return;
+
+  savePipelineToStorage();
+  addToSidebar(job);
+  updateStats();
+  refresh();
+}
+
+function markApplied(id, btn) {
+  const card = btn ? btn.closest('.job-card') : document.querySelector(`.job-card[data-id="${id}"]`);
+  const job  = JOBS.find(j => j != null && j.id === id) || JOBS.find(j => j != null && j.id == id);
+  if (!job) return;
+
+  if (btn) { btn.textContent = '✓ Applied!'; btn.disabled = true; }
+
+  job.status = 'Applied';
+  savePipelineToStorage();
+  updateStats();
+
+  if (!document.getElementById(`sidebar-item-${job.id}`)) addToSidebar(job);
+
+  if (card) {
+    card.style.animationDelay = '0s';
+    card.classList.add('is-removing');
+    setTimeout(function() { refresh(); }, 350);
+  } else {
+    refresh();
+  }
+}
+
+function undoApplied(id) {
+  const job = JOBS.find(j => j != null && j.id === id);
+  if (!job || job.status !== 'Applied') return;
+  job.status = 'To Apply';
+  savePipelineToStorage();
+  updateStats();
+  const item = document.getElementById(`sidebar-item-${id}`);
+  if (item) item.remove();
+  updateSidebarVisibility();
+  refresh();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EXPORT PIPELINE
+═══════════════════════════════════════════════════════════════════════════ */
+function exportPipeline() {
+  const raw = JSON.parse(localStorage.getItem('jb_pipeline_v1') || '{"Applied":[],"Interview":[],"Offer":[]}');
+  const out = { Applied: [], Interview: [], Offer: [] };
+  ['Applied', 'Interview', 'Offer'].forEach(status => {
+    (raw[status] || []).forEach(id => {
+      const job = JOBS.find(j => j != null && j.id === id);
+      if (job) out[status].push({ id: job.id, company: job.company, role: job.role });
+    });
+  });
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'pipeline.json';
+  a.click();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    localStorage.removeItem(APPLIED_KEY);   // nuke legacy key only
+    loadPipelineFromStorage();
+    loadRemovedFromStorage();
+    // Rebuild all 3 sidebar sections from in-memory job statuses
+    ['Applied', 'Interview', 'Offer'].forEach(status =>
+      JOBS.filter(j => j != null && j.status === status).forEach(j => addToSidebar(j))
+    );
+    // Date
+    const d = new Date();
+    document.getElementById('js-date').textContent =
+      d.toLocaleDateString('en-CA', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+    // Status filter buttons
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        refresh();
+      });
+    });
+
+    document.getElementById('js-search').addEventListener('input', refresh);
+    document.getElementById('js-fit-toggle').addEventListener('change', refresh);
+    document.getElementById('js-sort').addEventListener('change', refresh);
+
+    document.getElementById('js-reset-btn').addEventListener('click', function() {
+      if (!confirm('Restore all removed jobs and show all ' + JOBS.length + ' roles?')) return;
+      localStorage.removeItem('jb_removed_v1');
+      location.reload();
+    });
+
+    // Sidebar: button-specific handlers for undo, regress, advance, and jump-to-card
+    document.getElementById('js-applied-sidebar').addEventListener('click', function(e) {
+      const linkBtn = e.target.closest('.sidebar-link');
+      if (linkBtn) {
+        const jumpId = linkBtn.dataset.jump;
+        // Switch to All filter if the card isn't currently visible
+        const activeFilter = document.querySelector('.filter-btn.active');
+        if (activeFilter && activeFilter.dataset.status !== 'all') {
+          document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+          document.querySelector('.filter-btn[data-status="all"]').classList.add('active');
+          refresh();
+        }
+        const card = document.querySelector(`.job-card[data-id="${jumpId}"]`);
+        if (card) {
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          card.style.transition = 'box-shadow 0.2s';
+          card.style.boxShadow  = '0 0 0 2px #2dd4bf';
+          setTimeout(() => { card.style.boxShadow = ''; }, 1500);
+        }
+        return;
+      }
+      const item = e.target.closest('.sidebar-item');
+      if (!item) return;
+      const id = parseInt(item.dataset.id, 10);
+      if (isNaN(id)) return;
+      if (e.target.closest('.sidebar-undo'))    { undoApplied(id);  return; }
+      if (e.target.closest('.sidebar-regress')) { regressStage(id); return; }
+      if (e.target.closest('.sidebar-advance')) { advanceStage(id); return; }
+    });
+
+    updateStats();
+    refresh();
+  } catch(e) {
+    console.error('DOMContentLoaded setup error:', e);
+  }
+});
+
+// ── Generate Docs ─────────────────────────────────────────────────────────────
+
+function isDirectJobLink(url) {
+  if (!url) return false;
+  let u;
+  try { u = new URL(url); } catch { return false; }
+  const path = u.pathname;
+
+  // Reject: generic career/search pages
+  if (path === '/' || path === '') return false;
+  if (/\/(careers|jobs|work-with-us|current-opportunities)\/?$/i.test(path)) return false;
+  if (/\/about(-us|-[a-z]+)?\/careers\/?$/i.test(path)) return false;
+  if (/\/en\/careers\/?$/i.test(path)) return false;
+  if (/\/career\/[a-z-]+\.html$/i.test(path)) return false;
+  if (/(Careers_External_CA|Raymond_James_Ltd)\/?$/.test(path)) return false;
+  if (/job-search-results|\/search-results[?/]|\/jobs\?q=|\/search\?q=/i.test(url)) return false;
+  if (/ultipro\.(com|ca)\/.*\/JobBoard\//i.test(url) && !url.includes('OpportunityDetail')) return false;
+  if (/wd\d\.myworkdayjobs\.com/i.test(u.hostname) && !/\/job\//i.test(path)) return false;
+  if (/coastcapitalsavings\.com\/go\//i.test(url)) return false;
+
+  // Accept: specific job signals
+  if (/\/\d{5,}(\/|$)/.test(path)) return true;
+  if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(url)) return true;
+  if (/[?&](jid|jl)=[a-z0-9]{6,}/i.test(url)) return true;
+  if (/[?&]id=\d{8,}/.test(url)) return true;
+  if (/wd\d\.myworkdayjobs\.com/i.test(u.hostname) && /\/job\//i.test(path)) return true;
+  if (/\/job\/[A-Z][a-z]+-/i.test(path)) return true;
+  if (/\/job\/[A-Z][A-Z0-9-]{5,}(\/|$)/.test(path)) return true;
+  if (/\/job\/[A-Za-z0-9_-]{25,}$/.test(path)) return true;
+  if (/\/jobs\/view\/[a-z0-9-]+-\d{6,}/i.test(path)) return true;
+  if (/jobposting\/\d+/i.test(url)) return true;
+  if (/workable\.com\/.*\/j\/[A-Z0-9]+/i.test(url)) return true;
+  if (/jobs\.ca\/(job|offer)\/[0-9a-f-]{20,}/i.test(url)) return true;
+  if (/talent\.com\/view\?id=/i.test(url)) return true;
+  if (/careerbeacon\.com\/en\/job(-\d+)?\/\d+/i.test(url)) return true;
+  if (/discovertechnata\.com\/companies\/.*\/jobs\/\d+/i.test(url)) return true;
+  if (/eluta\.ca\/spl\//i.test(url)) return true;
+  if (/tdbank\.jobs\/.*\/[A-F0-9]{10,}\/job\//i.test(url)) return true;
+  if (/eduglobecorp\.com\/.vacancy\/job\//i.test(url)) return true;
+  return false;
+}
+
+async function generateDocs(jobId) {
+  const job = JOBS.find(j => j != null && j.id === jobId);
+  if (!job) return;
+
+  const btn = document.getElementById(`gen-docs-btn-${jobId}`);
+  const setBtn = (label, disabled) => {
+    btn.textContent = label;
+    btn.disabled = disabled;
+    btn.classList.toggle('is-loading', disabled);
+  };
+
+  setBtn('⏳ Generating...', true);
+
+  const signals = job.signals || [];
+  const isT1   = signals.some(s => s.includes('IR/FSR/FA'));
+  const isBig5 = signals.some(s => s.includes('Big 5'));
+  const isCU   = signals.some(s => s.includes('credit union'));
+
+  // First-person tailored summary from job-specific fields
+  const roleName = job.role.split('–')[0].split('(')[0].trim();
+  const coType   = isBig5 ? 'Big 5 bank' : isCU ? 'Metro Vancouver credit union' : 'financial services';
+  const summary  =
+    `Client-focused ${coType} professional with 7+ years of regulated, client-facing experience, ` +
+    `seeking the ${roleName} role at ${job.company}. Currently completing the Canadian Securities Course — ` +
+    `Exam 1 passed, Exam 2 scheduled June 2026; CPH in progress; Federal Income Tax certified (H&R Block, 2025). ` +
+    `MBA (Distinction, UCW 2023); trilingual in English, Khmer, and French; hands-on self-directed investor.`;
+
+  // Competencies — CSC/advisory skills lead for T1 roles, client-service skills lead for support roles
+  const competencies = isT1 ? [
+    'Canadian Securities Course (CSC) — Exam 1 Passed; Exam 2 June 2026',
+    'Banking Solutions & Financial Products Awareness',
+    'Client Relationship Building & Needs Assessment',
+    'Regulatory Compliance & Confidentiality',
+    'Federal Income Tax Certified — H&R Block (2025)',
+    'Problem Resolution & Issue Escalation',
+    'Multi-Channel Client Service (Phone, Email, In-Person)',
+    'MS Office Suite: Word, Excel (Advanced), Outlook',
+    'CRM Platforms: Zoho CRM, Kroll, ImmsBC',
+    'Trilingual: English, Khmer, French',
+  ] : [
+    'Client Relationship Building & Needs Assessment',
+    'Multi-Channel Client Service (Phone, Email, In-Person)',
+    'Canadian Securities Course (CSC) — Exam 1 Passed; Exam 2 June 2026',
+    'Regulatory Compliance & Confidentiality',
+    'Cash & Non-Cash Transaction Support',
+    'Problem Resolution & Issue Escalation',
+    'Federal Income Tax Certified — H&R Block (2025)',
+    'MS Office Suite: Word, Excel (Advanced), Outlook',
+    'CRM Platforms: Zoho CRM, Kroll, ImmsBC',
+    'Trilingual: English, Khmer, French',
+  ];
+
+  // Cover letter — 3 paragraphs, job.hook drives the opening line
+  const coShort   = job.company.split('(')[0].trim();
+  const coNetwork = isBig5 ? `${coShort}'s branch network` : isCU ? `${coShort}'s member advisory model` : `${coShort}'s team`;
+  const hookCore  = (job.hook || '').replace(/^I'm currently/, 'I am currently');
+  const coverLetter = [
+    `I am writing to express my strong interest in the ${roleName} position at ${coShort}. ${hookCore}`,
+    `My background combines 7+ years of regulated, client-facing experience with active financial credentials. ` +
+    `At Dhiman & Company, I guided clients through CRA-regulated filing processes — applying legislation, preparing T1/T2 returns, ` +
+    `and maintaining audit-ready documentation under strict confidentiality. At TLC Healthcare, I managed 50+ daily interactions ` +
+    `across compliance-sensitive platforms, building the accuracy, discretion, and client empathy that ${coNetwork} requires.`,
+    `I am eager to bring my credentials to ${coShort} and grow within the advisory track as I complete my CSC licensing in June 2026. ` +
+    `I welcome the opportunity to discuss how my background aligns with this role. Thank you for your consideration.`,
+  ];
+
+  setBtn('📄 Generate Docs', false);
+  showGenDocsModal(job, {
+    job_requirements_found: signals.length ? signals.join(' · ') : job.whyFit,
+    summary,
+    competencies,
+    experience: _BASE_EXPERIENCE,
+    cover_letter: coverLetter,
+  }, null);
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+
+(function injectGenDocsModal() {
+  const modal = document.createElement('div');
+  modal.id = 'gen-docs-modal';
+  modal.style.cssText = 'display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.72);align-items:center;justify-content:center;';
+  modal.onclick = e => { if (e.target === modal) closeGenDocsModal(); };
+  modal.innerHTML = `
+    <div style="background:#111827;border:1px solid rgba(255,255,255,0.1);border-radius:10px;width:min(660px,92vw);max-height:88vh;overflow-y:auto;padding:28px 32px;position:relative;box-shadow:0 24px 64px rgba(0,0,0,0.6);">
+      <button onclick="closeGenDocsModal()" style="position:absolute;top:14px;right:18px;background:none;border:none;color:#9ca3af;font-size:1.4rem;cursor:pointer;line-height:1;">×</button>
+      <div style="margin-bottom:18px;">
+        <div id="gdm-title" style="font-size:1.05rem;font-weight:700;color:#f9fafb;margin-bottom:4px;"></div>
+        <div id="gdm-company" style="font-size:0.82rem;color:#6b7280;"></div>
+      </div>
+      <div id="gdm-error" style="display:none;color:#f87171;font-size:0.88rem;padding:14px;background:rgba(239,68,68,0.08);border-radius:6px;margin-bottom:16px;"></div>
+      <div id="gdm-body" style="display:none;">
+        <div style="margin-bottom:16px;">
+          <div style="font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#2dd4bf;margin-bottom:6px;">Job Fit Signals</div>
+          <div id="gdm-requirements" style="font-size:0.88rem;color:#d1d5db;line-height:1.6;background:rgba(45,212,191,0.05);border-left:2px solid rgba(45,212,191,0.4);padding:10px 14px;border-radius:0 4px 4px 0;"></div>
+        </div>
+        <div style="margin-bottom:22px;">
+          <div style="font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Tailored Summary Preview</div>
+          <div id="gdm-summary" style="font-size:0.88rem;color:#d1d5db;line-height:1.6;font-style:italic;"></div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button id="gdm-dl-resume" onclick="downloadDocxResume()" style="flex:1;min-width:200px;padding:10px 16px;background:rgba(45,212,191,0.1);border:1px solid rgba(45,212,191,0.4);color:#2dd4bf;border-radius:5px;font-size:0.75rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:background 0.15s;">⬇ Resume</button>
+          <button id="gdm-dl-cl" onclick="downloadDocxCoverLetter()" style="flex:1;min-width:200px;padding:10px 16px;background:rgba(45,212,191,0.1);border:1px solid rgba(45,212,191,0.4);color:#2dd4bf;border-radius:5px;font-size:0.75rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:background 0.15s;">⬇ Cover Letter</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+})();
+
+let _gdmJob = null;
+let _gdmParsed = null;
+
+function showGenDocsModal(job, parsed, errorMsg) {
+  _gdmJob = job;
+  _gdmParsed = parsed;
+
+  document.getElementById('gdm-title').textContent = job.role;
+  document.getElementById('gdm-company').textContent =
+    job.company + (job.location ? '  ·  ' + job.location : '');
+
+  const errEl  = document.getElementById('gdm-error');
+  const bodyEl = document.getElementById('gdm-body');
+
+  if (errorMsg) {
+    errEl.textContent = 'Could not fetch job description from this URL: ' + errorMsg;
+    errEl.style.display = 'block';
+    bodyEl.style.display = 'none';
+  } else {
+    errEl.style.display = 'none';
+    bodyEl.style.display = 'block';
+    document.getElementById('gdm-requirements').textContent = parsed.job_requirements_found || '';
+    document.getElementById('gdm-summary').textContent = parsed.summary || '';
+    const slug = docxSlug(job.company, job.role);
+    document.getElementById('gdm-dl-resume').textContent = `⬇ Resume-Sarik-Eng-${slug}.docx`;
+    document.getElementById('gdm-dl-cl').textContent     = `⬇ Cover-Letter-Sarik-Eng-${slug}.docx`;
+  }
+
+  const modal = document.getElementById('gen-docs-modal');
+  modal.style.display = 'flex';
+}
+
+function closeGenDocsModal() {
+  document.getElementById('gen-docs-modal').style.display = 'none';
+}
+
+function docxSlug(company, role) {
+  return [company, role]
+    .join('-')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 60);
+}
+
+function triggerDownload(blob, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+// ── docx builders ─────────────────────────────────────────────────────────────
+
+const _BASE_EXPERIENCE = {
+  'Dhiman & Company Inc.': [
+    'Guided clients through complex regulated CRA filing processes via phone and email, explaining requirements and timelines from intake to completion',
+    'Applied legislation to assess client eligibility, explain financial obligations, and prepare accurate T1/T2 returns and GST/HST reconciliations',
+    'Maintained audit-ready documentation under strict confidentiality standards; resolved discrepancies in client financial records before filing',
+  ],
+  'TLC Healthcare Services Inc.': [
+    'Managed 50+ daily client interactions via phone and in-person in a regulated environment; resolved issues in real time and escalated complex cases',
+    'Maintained patient records across two regulated platforms (Kroll, ImmsBC); performed data entry and ensured file integrity across all active accounts',
+    'Exercised good judgement in confidential matters and applied patience and tact consistently with clients from diverse backgrounds',
+  ],
+  'Running Room': [
+    'Operated store independently; assessed individual customer needs through targeted questions and delivered confident, tailored recommendations',
+    'Built repeat customer relationships through consistent, knowledgeable, and personalized service interactions',
+  ],
+  'The Home Depot': [
+    'Provided in-person, phone, and online customer support in a high-volume retail environment; used internal systems for order management and inventory tracking daily',
+  ],
+  'Two Roads Retail Specialist Inc.': [
+    'Led day-to-day operations including staff scheduling, performance reviews, and sales reporting with minimal supervision',
+    'Promoted digital data capture at point of sale above company average; trained team on customer engagement standards',
+  ],
+  'Vattanac Properties': [
+    'Managed B2B and B2C client accounts through structured follow-up and relationship-building; prepared budget proposals and collaborated cross-functionally with leadership',
+  ],
+  'Naki Group': [
+    'Built client and vendor portfolio from launch; negotiated multi-region contracts and trained internal team on client service standards',
+  ],
+  'AboutAsia Travel': [
+    'Sold customized packages to international clients via phone and email; resolved complaints and refund requests with discretion to protect client relationships',
+  ],
+};
+
+const _EXP_META = [
+  { key: 'Dhiman & Company Inc.',          title: 'Tax Preparer & Customer Representative (Contract Full-time)', loc: 'Dhiman & Company Inc., Richmond, BC',                      dates: 'Jan 2026 – May 2026'    },
+  { key: 'TLC Healthcare Services Inc.',   title: 'Customer Service Representative (Full-time)',                 loc: 'TLC Healthcare Services Inc., Parksville, BC',             dates: 'Oct 2023 – Dec 2025'    },
+  { key: 'Running Room',                   title: 'Sales Associate (Part-Time)',                                 loc: 'Running Room, Richmond, BC',                               dates: 'Oct 2024 – Dec 2025'    },
+  { key: 'The Home Depot',                 title: 'Sales Associate (Part-Time)',                                 loc: 'The Home Depot, West Vancouver & Nanaimo, BC',             dates: 'Mar 2022 – Oct 2025'    },
+  { key: 'Two Roads Retail Specialist Inc.', title: 'Store Manager (Seasonal)',                                  loc: 'Two Roads Retail Specialist Inc., West Vancouver, BC',     dates: 'Aug – Oct 2023'         },
+  { key: 'Vattanac Properties',            title: 'Sales & Marketing Manager (Full-time)',                       loc: 'Vattanac Properties (The Atom), Phnom Penh, Cambodia',     dates: 'Jan – Dec 2021'         },
+  { key: 'Naki Group',                     title: 'Business Development Manager (Full-time)',                    loc: 'Naki Group (Cira Arthika Tourism), Cambodia',               dates: 'Jun 2019 – Jan 2021'    },
+  { key: 'AboutAsia Travel',               title: 'Sales Manager (Full-time)',                                   loc: 'AboutAsia Travel, Siem Reap, Cambodia',                     dates: 'Jan 2014 – Oct 2016'    },
+];
+
+async function downloadDocxResume() {
+  if (!_gdmJob || !_gdmParsed) return;
+  try {
+  const { Document, Packer, Paragraph, TextRun, AlignmentType,
+          Table, TableRow, TableCell, WidthType } = docx;
+
+  const p = _gdmParsed;
+  const exp = p.experience || {};
+
+  const noBorder = { style: 'none', size: 0, color: 'FFFFFF' };
+  const allNoBorder = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideH: noBorder, insideV: noBorder };
+
+  function sHead(text) {
+    return new Paragraph({
+      children: [new TextRun({ text, bold: true, size: 22, color: '1a237e' })],
+      thematicBreak: true,
+      spacing: { before: 240, after: 80 },
+    });
+  }
+
+  const comps = p.competencies || [];
+  const tableRows = [];
+  for (let i = 0; i < comps.length; i += 2) {
+    tableRows.push(new TableRow({ children: [
+      new TableCell({ borders: allNoBorder, width: { size: 50, type: WidthType.PERCENTAGE },
+        children: [new Paragraph({ children: [new TextRun({ text: `▪  ${comps[i] || ''}`, size: 19 })] })] }),
+      new TableCell({ borders: allNoBorder, width: { size: 50, type: WidthType.PERCENTAGE },
+        children: [new Paragraph({ children: [new TextRun({ text: comps[i+1] ? `▪  ${comps[i+1]}` : '', size: 19 })] })] }),
+    ]}));
+  }
+
+  const children = [
+    new Paragraph({ alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: 'SARIK ENG', bold: true, size: 40, color: '1a237e' })],
+      spacing: { after: 60 } }),
+    new Paragraph({ alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: 'Richmond, BC  ·  236-513-1896  ·  sarikc2@gmail.com  ·  Permanent Resident of Canada', size: 18, color: '555555' })],
+      spacing: { after: 200 } }),
+
+    sHead('PROFESSIONAL SUMMARY'),
+    new Paragraph({ text: p.summary || '', spacing: { after: 160 } }),
+
+    sHead('CORE COMPETENCIES'),
+    ...(tableRows.length ? [new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: tableRows }),
+      new Paragraph({ text: '', spacing: { after: 80 } })] : []),
+
+    sHead('PROFESSIONAL EXPERIENCE'),
+    ..._EXP_META.flatMap(e => {
+      const bullets = exp[e.key] || [];
+      if (!bullets.length) return [];
+      return [
+        new Paragraph({ children: [new TextRun({ text: `${e.title}  |  ${e.loc}`, bold: true, size: 20 })], spacing: { before: 140, after: 40 } }),
+        new Paragraph({ children: [new TextRun({ text: e.dates, italics: true, size: 19, color: '555555' })], spacing: { after: 60 } }),
+        ...bullets.map(b => new Paragraph({ children: [new TextRun({ text: `•  ${b}`, size: 19 })], indent: { left: 360 }, spacing: { after: 60 } })),
+      ];
+    }),
+
+    sHead('EDUCATION & TRAINING'),
+    ...[
+      'MBA (Distinction)  |  University Canada West, Vancouver, BC  |  Jan 2022 – Jul 2023',
+      'Web Development Bootcamp  |  BrainStation, Vancouver, BC  |  Apr – Jun 2023',
+      'Master of Tourism Management  |  Victoria University of Wellington, NZ  |  Mar 2017 – Apr 2019  (NZ Government Scholarship)',
+      'Bachelor of Business Administration  |  National University of Management, Cambodia  |  Sep 2007 – Oct 2011',
+    ].map(t => new Paragraph({ text: t, spacing: { after: 80 } })),
+
+    sHead('CERTIFICATIONS & FINANCIAL KNOWLEDGE'),
+    ...[
+      'Canadian Securities Course (CSC): Exam 1 passed; Exam 2 scheduled June 2026',
+      'Federal Income Tax Level 1 — H&R Block (Completed December 2025)',
+      'MS Office Suite: Word, Excel (Advanced), Outlook — daily professional use',
+      'CRM & Platforms: Zoho CRM, Kroll, ImmsBC; Trilingual: English, Khmer, French',
+    ].map(t => new Paragraph({ children: [new TextRun({ text: `•  ${t}`, size: 19 })], indent: { left: 360 }, spacing: { after: 60 } })),
+  ];
+
+  const doc = new Document({ sections: [{ children }] });
+  const blob = await Packer.toBlob(doc);
+  triggerDownload(blob, `Resume-Sarik-Eng-${docxSlug(_gdmJob.company, _gdmJob.role)}.docx`);
+  } catch(e) {
+    console.error('docx generation error:', e);
+    alert('Error generating document: ' + e.message);
+  }
+}
+
+async function downloadDocxCoverLetter() {
+  if (!_gdmJob || !_gdmParsed) return;
+  try {
+  const { Document, Packer, Paragraph, TextRun, AlignmentType } = docx;
+
+  const today = new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' });
+  const paras = _gdmParsed.cover_letter || [];
+
+  const children = [
+    new Paragraph({ alignment: AlignmentType.RIGHT,
+      children: [new TextRun({ text: today, size: 20 })], spacing: { after: 280 } }),
+    new Paragraph({ children: [new TextRun({ text: 'Hiring Manager', bold: true })], spacing: { after: 40 } }),
+    new Paragraph({ children: [new TextRun({ text: _gdmJob.company })], spacing: { after: 40 } }),
+    new Paragraph({ children: [new TextRun({ text: _gdmJob.location || '' })], spacing: { after: 280 } }),
+    new Paragraph({ children: [new TextRun({ text: `Re: ${_gdmJob.role}`, italics: true })], spacing: { after: 280 } }),
+    ...paras.map(p => new Paragraph({ text: p, spacing: { after: 200 } })),
+    new Paragraph({ text: 'Sincerely,', spacing: { before: 280, after: 280 } }),
+    new Paragraph({ children: [new TextRun({ text: 'Sarik Eng', bold: true })], spacing: { after: 60 } }),
+    new Paragraph({ text: '236-513-1896  |  sarikc2@gmail.com' }),
 
   const doc = new Document({ sections: [{ children }] });
   const blob = await Packer.toBlob(doc);
