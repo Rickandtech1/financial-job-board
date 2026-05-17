@@ -401,6 +401,20 @@
     .sort-select:hover { border-color: var(--gold-dk); }
     .sort-select option { background: #0C1D32; color: var(--cream); }
 
+    .reset-btn {
+      background: transparent;
+      border: 1px solid #7f3030;
+      border-radius: 4px;
+      color: #e57373;
+      font-family: 'Barlow', sans-serif;
+      font-size: 0.8rem;
+      padding: 0.5rem 0.9rem;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      white-space: nowrap;
+    }
+    .reset-btn:hover { background: #7f3030; border-color: #e57373; color: #fff; }
+
     /* ── Section Divider ────────────────────────────────────────────────── */
     .section-divider {
       max-width: 1440px;
@@ -1344,6 +1358,8 @@
     <option value="company">Sort · Company A–Z</option>
     <option value="salary">Sort · Salary ↓</option>
   </select>
+
+  <button class="reset-btn" id="js-reset-btn" title="Restore all removed jobs">↺ Reset Board</button>
 </div>
 
 <!-- ── DIVIDER ──────────────────────────────────────────────────────────────── -->
@@ -4004,6 +4020,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('js-search').addEventListener('input', refresh);
     document.getElementById('js-fit-toggle').addEventListener('change', refresh);
     document.getElementById('js-sort').addEventListener('change', refresh);
+
+    document.getElementById('js-reset-btn').addEventListener('click', function() {
+      if (!confirm('Restore all removed jobs? This will show all ' + JOBS.length + ' roles on your board.')) return;
+      localStorage.removeItem('jb_removed_v1');
+      JOBS.forEach(j => { if (j && j.status === 'Removed') j.status = 'To Apply'; });
+      updateStats();
+      refresh();
+    });
 
     // Sidebar: button-specific handlers for undo, regress, advance, and jump-to-card
     document.getElementById('js-applied-sidebar').addEventListener('click', function(e) {
