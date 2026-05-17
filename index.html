@@ -5882,6 +5882,7 @@ async function downloadDocxCoverLetter() {
     new Paragraph({ text: 'Sincerely,', spacing: { before: 280, after: 280 } }),
     new Paragraph({ children: [new TextRun({ text: 'Sarik Eng', bold: true })], spacing: { after: 60 } }),
     new Paragraph({ text: '236-513-1896  |  sarikc2@gmail.com' }),
+  ];
 
   const doc = new Document({ sections: [{ children }] });
   const blob = await Packer.toBlob(doc);
