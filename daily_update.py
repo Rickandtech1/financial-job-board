@@ -73,6 +73,21 @@ CU_CAREERS = [
     {"company": "Sunrise Credit Union",    "url": "https://www.sunrisecu.mb.ca/about/careers"},
 ]
 
+WEALTH_FIRMS = [
+    {"company": "Odlum Brown Limited",       "url": "https://www.odlumbrown.com/about/join-us/opportunities"},
+    {"company": "RGF Integrated Wealth",     "url": "https://www.rgfwealth.com/about/careers/"},
+    {"company": "PWL Capital",               "url": "https://pwlcapital.com/about/careers/"},
+    {"company": "Nicola Wealth",             "url": "https://nicolawealth.com/careers"},
+    {"company": "IG Wealth Management",      "url": "https://www.ig.ca/en/careers/financial-advisor-careers"},
+    {"company": "Wellington-Altus",          "url": "https://wellington-altus.ca/careers/"},
+    {"company": "Richardson Wealth",         "url": "https://richardsonwealth.com/careers/career-opportunities"},
+    {"company": "Canaccord Genuity",         "url": "https://jobs.canaccordgenuity.com/"},
+    {"company": "Raymond James Ltd",         "url": "https://www.raymondjames.ca/careers/corporate-opportunities"},
+    {"company": "ZLC Wealth",                "url": "https://www.zlc.net/careers/"},
+    {"company": "Spring Planning",           "url": "https://springplans.ca/careers/"},
+    {"company": "Assante Wealth Management", "url": "https://www.assante.com/careers"},
+]
+
 JOB_KEYWORDS = {
     "financial", "representative", "advisor", "associate", "banking",
     "member service", "customer experience", "member advice", "investment", "wealth",
@@ -348,6 +363,49 @@ def scrape_credit_unions() -> list:
     return items
 
 
+def scrape_wealth_firms() -> list:
+    items = []
+
+    for firm in WEALTH_FIRMS:
+        company = firm["company"]
+        firm_url = firm["url"]
+        try:
+            time.sleep(1)
+            resp = SESSION.get(firm_url, timeout=15)
+            if resp.status_code != 200:
+                print(f"  [INFO] {company}: HTTP {resp.status_code}", flush=True)
+                continue
+
+            soup  = BeautifulSoup(resp.text, "lxml")
+            found = 0
+            for link in soup.find_all("a", href=True):
+                text = link.get_text(strip=True)
+                href = link["href"]
+                if not text or len(text) < 5 or len(text) > 150:
+                    continue
+                if not any(kw in text.lower() for kw in JOB_KEYWORDS):
+                    continue
+                job_url = (href if href.startswith("http")
+                           else re.sub(r'/[^/]*$', '', firm_url.rstrip("/")) + "/" + href.lstrip("/"))
+                items.append({
+                    "title":       text,
+                    "company":     company,
+                    "location":    "Metro Vancouver, BC",
+                    "url":         job_url,
+                    "salary":      "",
+                    "description": "",
+                })
+                found += 1
+
+            if found == 0:
+                print(f"  [INFO] {company} — no jobs found (may be JS-rendered)", flush=True)
+
+        except Exception as e:
+            print(f"  [WARN] {company} failed: {e}", flush=True)
+
+    return items
+
+
 def scrape_all() -> list:
     raw = []
     print("\n[STEP 2] Scraping all sources ...", flush=True)
@@ -366,6 +424,11 @@ def scrape_all() -> list:
     cu_items = scrape_credit_unions()
     print(f"  Credit unions: {len(cu_items)} links found", flush=True)
     raw += [normalize(i, "Credit Union Careers") for i in cu_items]
+
+    print("  Wealth management firm career pages ...", flush=True)
+    wf_items = scrape_wealth_firms()
+    print(f"  Wealth firms: {len(wf_items)} links found", flush=True)
+    raw += [normalize(i, "Wealth Firm Careers") for i in wf_items]
 
     print(f"  Total raw items: {len(raw)}", flush=True)
     return raw
@@ -400,7 +463,9 @@ CREDIT_UNIONS = {"vancity", "coast capital", "first west", "blueshore", "prosper
                  "westminster savings", "g&f financial", "khalsa", "integris",
                  "envision financial"}
 BOUTIQUES = {"raymond james", "canaccord", "edward jones", "manulife", "ig wealth",
-             "aviso", "desjardins", "national bank"}
+             "aviso", "desjardins", "national bank", "odlum brown", "rgf", "pwl capital",
+             "nicola wealth", "wellington-altus", "richardson wealth", "zlc", "spring planning",
+             "assante"}
 
 EXPIRED_PHRASES = [
     'no longer accepting applications',
@@ -924,7 +989,7 @@ def build_email_html(new_jobs: list, total_jobs: int) -> tuple:
 <h2 style="color:#1a237e;">📋 Daily Job Board Update — {TODAY}</h2>
 <p>Sarik, no new roles matched your criteria today. Here's a quick summary:</p>
 <ul>
-  <li><strong>Sources checked:</strong> Job Bank Canada, TD &amp; BMO Workday APIs, 6 Metro Vancouver credit unions (Vancity, Coast Capital, BlueShore, First West, Khalsa, Sunrise)</li>
+  <li><strong>Sources checked:</strong> Job Bank Canada, TD &amp; BMO Workday APIs, 6 Metro Vancouver credit unions (Vancity, Coast Capital, BlueShore, First West, Khalsa, Sunrise), 12 wealth management firms (Odlum Brown, RGF, PWL Capital, Nicola Wealth, IG Wealth, Wellington-Altus, Richardson Wealth, Canaccord, Raymond James, ZLC, Spring Planning, Assante)</li>
   <li><strong>Total roles on your board:</strong> {total_jobs}</li>
   <li><strong>Your board:</strong> <a href="{board_url}">{board_url}</a></li>
 </ul>
