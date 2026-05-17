@@ -4022,11 +4022,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('js-sort').addEventListener('change', refresh);
 
     document.getElementById('js-reset-btn').addEventListener('click', function() {
-      if (!confirm('Restore all removed jobs? This will show all ' + JOBS.length + ' roles on your board.')) return;
+      if (!confirm('Restore all removed jobs and show all ' + JOBS.length + ' roles?')) return;
       localStorage.removeItem('jb_removed_v1');
-      JOBS.forEach(j => { if (j && j.status === 'Removed') j.status = 'To Apply'; });
-      updateStats();
-      refresh();
+      location.reload();
     });
 
     // Sidebar: button-specific handlers for undo, regress, advance, and jump-to-card
