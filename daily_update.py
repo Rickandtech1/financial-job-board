@@ -930,15 +930,21 @@ def git_commit_push(repo_dir: str, count: int):
     env["GIT_COMMITTER_NAME"]  = "Rickandtech1"
     env["GIT_COMMITTER_EMAIL"] = "rickandtech1@users.noreply.github.com"
 
+    pat = GITHUB_PAT or os.environ.get("GITHUB_TOKEN", "")
+    remote_url = f"https://Rickandtech1:{pat}@github.com/Rickandtech1/financial-job-board.git"
+
     subprocess.run(["git", "add", "index.html", "pipeline.json"], cwd=repo_dir, env=env, check=True)
     subprocess.run(["git", "commit", "-m", f"Daily update {TODAY}: {count} new roles"],
                    cwd=repo_dir, env=env, check=True)
 
-    pat   = GITHUB_PAT or os.environ.get("GITHUB_TOKEN", "")
-    remote = f"https://Rickandtech1:{pat}@github.com/Rickandtech1/financial-job-board.git"
+    # Pull before pushing to avoid "rejected (fetch first)" when remote has moved ahead
+    pull = subprocess.run(["git", "pull", "--rebase", remote_url, "main"],
+                          cwd=repo_dir, env=env, capture_output=True, text=True)
+    if pull.returncode != 0:
+        print(f"  [WARN] git pull --rebase failed: {pull.stderr.strip()[:200]}", flush=True)
 
     for attempt in range(4):
-        result = subprocess.run(["git", "push", remote, "main"],
+        result = subprocess.run(["git", "push", remote_url, "main"],
                                 cwd=repo_dir, env=env, capture_output=True, text=True)
         if result.returncode == 0:
             print("  [INFO] git push succeeded", flush=True)
