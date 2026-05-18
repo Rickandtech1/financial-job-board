@@ -67,64 +67,95 @@
     }
 
     /* ── Header ─────────────────────────────────────────────────────────── */
+    @keyframes headerReveal {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
     header {
       position: relative;
       z-index: 10;
       max-width: 1440px;
       margin: 0 auto;
-      padding: 2.8rem 2.5rem 0;
+      padding: 0 2.5rem 0;
+      background: radial-gradient(ellipse 60% 100% at 20% 50%, rgba(200,169,81,0.06) 0%, transparent 70%);
+    }
+
+    header::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(to right, transparent, var(--gold) 30%, var(--gold) 70%, transparent);
     }
 
     .header-top {
       display: flex;
       justify-content: space-between;
       align-items: flex-end;
-      padding-bottom: 1.6rem;
-      border-bottom: 1px solid var(--border);
+      padding: 2.8rem 0 1.8rem;
+      position: relative;
+    }
+
+    .header-top::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(200,169,81,0.3) 20%, rgba(200,169,81,0.3) 80%, transparent);
     }
 
     .header-eyebrow {
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.65rem;
+      font-size: 0.55rem;
       font-weight: 600;
-      letter-spacing: 0.22em;
+      letter-spacing: 0.28em;
       text-transform: uppercase;
       color: var(--gold);
-      margin-bottom: 0.45rem;
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-    }
-
-    .header-eyebrow::before {
-      content: '';
-      display: inline-block;
-      width: 20px;
-      height: 1px;
-      background: var(--gold-dk);
+      margin-bottom: 0.65rem;
     }
 
     .header-name {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: clamp(2rem, 3.5vw, 3rem);
-      font-weight: 600;
-      color: var(--cream);
-      letter-spacing: -0.01em;
-      line-height: 1.1;
+      font-size: clamp(2.2rem, 3.5vw, 3.5rem);
+      line-height: 1.05;
+      display: flex;
+      align-items: baseline;
+      gap: 0.18em;
+      animation: headerReveal 0.8s ease both;
     }
 
-    .header-name span {
-      color: var(--gold);
+    .header-name-sarik {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #ffffff;
+      text-shadow: 0 0 40px rgba(200,169,81,0.3);
+    }
+
+    .header-name-dot {
+      font-family: 'Playfair Display', Georgia, serif;
       font-style: italic;
       font-weight: 400;
+      color: var(--gold);
+      padding: 0 0.05em;
+    }
+
+    .header-name-board {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--gold);
     }
 
     .header-tagline {
-      margin-top: 0.4rem;
-      font-size: 0.82rem;
+      margin-top: 0.55rem;
+      font-size: 0.75rem;
       font-weight: 300;
       color: var(--cream-dim);
-      letter-spacing: 0.02em;
+      letter-spacing: 0.06em;
+      animation: headerReveal 0.8s ease 0.2s both;
     }
 
     .header-right {
@@ -159,17 +190,17 @@
     .header-date {
       font-family: 'Barlow Condensed', sans-serif;
       font-size: 0.7rem;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
-      color: var(--cream-dim);
-      margin-bottom: 0.7rem;
+      color: var(--gold);
+      margin-bottom: 0.3rem;
     }
 
     .cred-stack {
       display: flex;
       flex-direction: column;
       align-items: flex-end;
-      gap: 0.35rem;
+      gap: 0.3rem;
     }
 
     .cred-pill {
@@ -1283,7 +1314,11 @@
   <div class="header-top">
     <div>
       <div class="header-eyebrow">Financial Services · Job Search Dashboard</div>
-      <div class="header-name">Sarik Eng <span>·</span> Job Board</div>
+      <div class="header-name">
+        <span class="header-name-sarik">Sarik Eng</span>
+        <span class="header-name-dot">·</span>
+        <span class="header-name-board">Job Board</span>
+      </div>
       <div class="header-tagline">
         Investment Representative &nbsp;·&nbsp; FSR &nbsp;·&nbsp; Associate Financial Advisor &nbsp;·&nbsp; Metro Vancouver
       </div>
