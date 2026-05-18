@@ -1043,6 +1043,39 @@
       .hook-box { grid-column: 1; }
     }
 
+    @media (max-width: 768px) {
+      .header-top {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.2rem;
+      }
+      .header-right {
+        align-items: flex-start;
+        text-align: left;
+        width: 100%;
+      }
+      .cred-stack {
+        align-items: flex-start;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+      }
+      .board-layout {
+        flex-direction: column;
+      }
+      .applied-sidebar {
+        order: -1;
+        width: 100%;
+        max-width: 100%;
+      }
+      .applied-sidebar:not(.has-items) {
+        display: none;
+      }
+      .board-main {
+        width: 100%;
+      }
+    }
+
     @media (max-width: 640px) {
       header, .stats-banner, .controls, .job-grid, .section-divider {
         padding-left: 1rem;
