@@ -1043,63 +1043,6 @@
       .hook-box { grid-column: 1; }
     }
 
-    @media (max-width: 768px) {
-      .header-top {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1.2rem;
-      }
-      .header-right {
-        align-items: flex-start;
-        text-align: left;
-        width: 100%;
-      }
-      .cred-stack {
-        align-items: flex-start;
-        flex-direction: row;
-        flex-wrap: wrap;
-        gap: 0.4rem;
-      }
-      .board-layout {
-        flex-direction: column !important;
-        gap: 0;
-        padding-left: 0;
-        padding-right: 0;
-      }
-      .applied-sidebar {
-        order: -1;
-        width: 100% !important;
-        min-width: 0 !important;
-        max-width: 100% !important;
-        margin: 0 0 1rem 0 !important;
-        padding: 1rem !important;
-        box-sizing: border-box;
-        position: static !important;
-        top: auto !important;
-        max-height: none !important;
-        overflow: visible !important;
-        overflow-y: visible !important;
-        transition: none !important;
-        background: var(--bg-card, #0f2137) !important;
-        border: 1px solid var(--border) !important;
-        border-radius: 8px !important;
-        z-index: auto !important;
-        flex-shrink: 0 !important;
-      }
-      .applied-sidebar:not(.has-items) {
-        display: none !important;
-      }
-      .board-main {
-        width: 100%;
-        min-width: 0;
-      }
-      .job-grid {
-        grid-template-columns: 1fr !important;
-        padding-left: 1rem;
-        padding-right: 1rem;
-      }
-    }
-
     @media (max-width: 640px) {
       header, .stats-banner, .controls, .job-grid, .section-divider {
         padding-left: 1rem;
@@ -1361,6 +1304,69 @@
     }
     .btn-gen-docs:hover { background: rgba(45,212,191,0.15); border-color: rgba(45,212,191,0.7); }
     .btn-gen-docs.is-loading { opacity: 0.5; cursor: wait; }
+
+    /* ── Mobile overrides — MUST stay last so they beat all desktop rules ── */
+    @media (max-width: 768px) {
+      .header-top {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.2rem;
+      }
+      .header-right {
+        align-items: flex-start;
+        text-align: left;
+        width: 100%;
+      }
+      .cred-stack {
+        align-items: flex-start;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+      }
+      .board-layout {
+        flex-direction: column;
+        gap: 0;
+        padding-left: 0;
+        padding-right: 0;
+      }
+      .applied-sidebar {
+        order: -1;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        margin: 0 0 1rem 0;
+        padding: 1rem;
+        box-sizing: border-box;
+        position: relative;
+        top: auto;
+        max-height: none;
+        overflow: hidden;
+        overflow-y: auto;
+        transition: none;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-right: 1px solid var(--border);
+        border-radius: 8px;
+        z-index: 1;
+        flex-shrink: 0;
+      }
+      .applied-sidebar.has-items {
+        width: 100%;
+        padding: 1rem;
+      }
+      .applied-sidebar:not(.has-items) {
+        display: none;
+      }
+      .board-main {
+        width: 100%;
+        min-width: 0;
+      }
+      .job-grid {
+        grid-template-columns: 1fr;
+        padding-left: 1rem;
+        padding-right: 1rem;
+      }
+    }
   </style>
   <script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
 </head>
