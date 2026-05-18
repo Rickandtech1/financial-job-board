@@ -772,7 +772,7 @@ def is_duplicate(job: dict, existing: list) -> bool:
 
 # ── HTML append ───────────────────────────────────────────────────────────────
 
-SALARY_NOT_LISTED = "Not listed"
+SALARY_NOT_LISTED = "Salary not listed"
 
 
 def format_salary(raw: str) -> str:
