@@ -5189,14 +5189,18 @@ function getFiltered() {
     if (sort === 'company') return a.company.localeCompare(b.company) || b.fitScore - a.fitScore;
     if (sort === 'date')    return a.daysAgo - b.daysAgo || b.fitScore - a.fitScore;
     if (sort === 'salary')  return parseSalary(b.salary) - parseSalary(a.salary) || b.fitScore - a.fitScore;
-    // Default (fit): highest fit score first, newest posting as tiebreaker
+    if (sort === 'fit')     return b.fitScore - a.fitScore || a.daysAgo - b.daysAgo;
     return b.fitScore - a.fitScore || a.daysAgo - b.daysAgo;
   });
 
   return list;
 }
 
-function refresh() { renderGrid(getFiltered()); }
+function refresh() {
+  const filtered = getFiltered();
+  renderGrid(filtered);
+  document.getElementById('js-total').textContent = filtered.length;
+}
 
 function hlCo(card) {
   const co = card.dataset.co;
