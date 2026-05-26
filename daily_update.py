@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """
 Daily job board updater for Sarik Eng — Metro Vancouver financial services roles.
-Scrapes Job Bank Canada, Big 5 bank Workday APIs, and Metro Van credit union pages.
-Scores, deduplicates, appends to index.html, commits, pushes, and sends a digest email.
+Scrapes Apify (LinkedIn, Indeed, Glassdoor, ZipRecruiter), Job Bank Canada,
+Big 5 bank Workday APIs, and Metro Van credit union pages.
+Scores, deduplicates, appends to index.html, commits, and pushes.
+Email is sent automatically by the email-digest GitHub Actions workflow after push.
 
 Usage:
-  RESEND_API_KEY=...  TO_EMAIL=...  python3 daily_update.py
+  APIFY_TOKEN=... RESEND_API_KEY=... python3 daily_update.py
 """
 
 import json, os, re, sys, time, tempfile, subprocess, datetime, urllib.request, urllib.error, base64
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
@@ -22,6 +25,7 @@ REPO_DIR       = os.environ.get("REPO_DIR", os.path.dirname(os.path.abspath(__fi
 JOB_BOARD_PATH = os.path.join(REPO_DIR, "index.html")
 TODAY          = datetime.date.today().isoformat()
 ANTHROPIC_KEY  = os.environ.get("ANTHROPIC_API_KEY", "")
+APIFY_TOKEN    = os.environ.get("APIFY_TOKEN", "")
 
 # ── HTTP session ──────────────────────────────────────────────────────────────
 
@@ -411,9 +415,150 @@ def scrape_wealth_firms() -> list:
     return items
 
 
+# ── Apify scraping ────────────────────────────────────────────────────────────
+
+_APIFY_BASE = "https://api.apify.com/v2"
+
+_APIFY_ACTORS = [
+    ("apify~linkedin-jobs-scraper", {
+        "queries": [
+            "investment representative Vancouver BC",
+            "financial services representative Vancouver",
+            "associate financial advisor Vancouver",
+            "investment associate Vancouver BC",
+            "associate wealth advisor Vancouver",
+            "customer experience associate bank Vancouver",
+            "customer experience representative credit union Vancouver",
+        ],
+        "location": "Vancouver, British Columbia, Canada",
+        "maxResults": 50,
+    }, "LinkedIn"),
+    ("apify~indeed-scraper", {
+        "country": "CA",
+        "location": "Vancouver, BC",
+        "position": (
+            "investment representative OR financial services representative OR "
+            "associate financial advisor OR investment associate OR "
+            "customer experience associate OR customer experience representative"
+        ),
+        "maxItems": 50,
+    }, "Indeed"),
+    ("bebity~glassdoor-jobs-scraper",
+     {"keyword": "investment representative",      "location": "Vancouver, BC, Canada", "maxItems": 20},
+     "Glassdoor"),
+    ("bebity~glassdoor-jobs-scraper",
+     {"keyword": "financial services representative", "location": "Vancouver, BC, Canada", "maxItems": 20},
+     "Glassdoor"),
+    ("bebity~glassdoor-jobs-scraper",
+     {"keyword": "associate financial advisor",    "location": "Vancouver, BC, Canada", "maxItems": 20},
+     "Glassdoor"),
+    ("bebity~glassdoor-jobs-scraper",
+     {"keyword": "customer experience associate bank", "location": "Vancouver, BC, Canada", "maxItems": 20},
+     "Glassdoor"),
+    ("apify~zip-recruiter-scraper", {
+        "queries": [
+            "investment representative Vancouver BC",
+            "financial services representative Vancouver",
+            "associate financial advisor Vancouver BC",
+            "customer experience associate Vancouver BC",
+        ],
+        "location": "Vancouver, BC",
+        "maxItems": 40,
+    }, "ZipRecruiter"),
+]
+
+
+def _apify_start(actor: str, input_data: dict) -> str | None:
+    url = f"{_APIFY_BASE}/acts/{actor}/runs?token={APIFY_TOKEN}"
+    try:
+        r = requests.post(url, json=input_data, timeout=30)
+        if r.status_code in (200, 201):
+            return r.json().get("data", {}).get("id")
+        print(f"  [WARN] Apify start {actor}: HTTP {r.status_code} — {r.text[:120]}", flush=True)
+    except Exception as e:
+        print(f"  [WARN] Apify start {actor}: {e}", flush=True)
+    return None
+
+
+def _apify_poll(run_id: str, timeout: int = 600) -> str | None:
+    """Poll run until SUCCEEDED or FAILED. Returns defaultDatasetId or None."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            r = requests.get(
+                f"{_APIFY_BASE}/actor-runs/{run_id}?token={APIFY_TOKEN}", timeout=15)
+            if r.status_code == 200:
+                data = r.json().get("data", {})
+                status = data.get("status", "")
+                if status == "SUCCEEDED":
+                    return data.get("defaultDatasetId")
+                if status in ("FAILED", "ABORTED", "TIMED-OUT"):
+                    print(f"  [WARN] Apify run {run_id}: {status}", flush=True)
+                    return None
+        except Exception as e:
+            print(f"  [WARN] Apify poll {run_id}: {e}", flush=True)
+        time.sleep(30)
+    print(f"  [WARN] Apify run {run_id}: timed out after {timeout}s", flush=True)
+    return None
+
+
+def _apify_fetch(dataset_id: str) -> list:
+    url = f"{_APIFY_BASE}/datasets/{dataset_id}/items?token={APIFY_TOKEN}&limit=200"
+    try:
+        r = requests.get(url, timeout=30)
+        if r.status_code == 200:
+            return r.json()
+        print(f"  [WARN] Apify dataset {dataset_id}: HTTP {r.status_code}", flush=True)
+    except Exception as e:
+        print(f"  [WARN] Apify dataset {dataset_id}: {e}", flush=True)
+    return []
+
+
+def _run_one_apify_actor(actor: str, input_data: dict, source: str) -> list:
+    run_id = _apify_start(actor, input_data)
+    if not run_id:
+        return []
+    print(f"  [INFO] Apify {actor} started (run={run_id})", flush=True)
+    dataset_id = _apify_poll(run_id)
+    if not dataset_id:
+        return []
+    items = _apify_fetch(dataset_id)
+    active = [i for i in items if is_job_active(i)]
+    print(f"  [INFO] Apify {actor} ({source}): {len(active)}/{len(items)} active items", flush=True)
+    return [normalize(i, source) for i in active]
+
+
+def scrape_apify() -> list:
+    """Run all configured Apify actors in parallel; return normalized job list."""
+    if not APIFY_TOKEN:
+        print("  [INFO] APIFY_TOKEN not set — skipping Apify sources", flush=True)
+        return []
+
+    results = []
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = {
+            pool.submit(_run_one_apify_actor, actor, inp, src): (actor, src)
+            for actor, inp, src in _APIFY_ACTORS
+        }
+        for fut in as_completed(futures):
+            actor, src = futures[fut]
+            try:
+                results.extend(fut.result())
+            except Exception as e:
+                print(f"  [WARN] Apify {actor} ({src}) thread error: {e}", flush=True)
+
+    print(f"  Apify total: {len(results)} normalized items", flush=True)
+    return results
+
+
 def scrape_all() -> list:
     raw = []
     print("\n[STEP 2] Scraping all sources ...", flush=True)
+
+    print("  Apify (LinkedIn / Indeed / Glassdoor / ZipRecruiter) ...", flush=True)
+    apify_items = scrape_apify()
+    print(f"  Apify: {len(apify_items)} items", flush=True)
+    raw += apify_items
 
     print("  Job Bank Canada ...", flush=True)
     jb_items = scrape_jobbank()
@@ -932,7 +1077,11 @@ def git_commit_push(repo_dir: str, count: int):
     env["GIT_COMMITTER_EMAIL"] = "rickandtech1@users.noreply.github.com"
 
     pat = GITHUB_PAT or os.environ.get("GITHUB_TOKEN", "")
-    remote_url = f"https://Rickandtech1:{pat}@github.com/Rickandtech1/financial-job-board.git"
+    # GitHub Actions uses x-access-token; local runs use the stored PAT username
+    if os.environ.get("GITHUB_ACTIONS"):
+        remote_url = f"https://x-access-token:{pat}@github.com/Rickandtech1/financial-job-board.git"
+    else:
+        remote_url = f"https://Rickandtech1:{pat}@github.com/Rickandtech1/financial-job-board.git"
 
     subprocess.run(["git", "add", "index.html", "pipeline.json"], cwd=repo_dir, env=env, check=True)
     subprocess.run(["git", "commit", "-m", f"Daily update {TODAY}: {count} new roles"],
