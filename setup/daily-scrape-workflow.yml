@@ -1,0 +1,40 @@
+name: Daily Job Scrape
+
+on:
+  schedule:
+    - cron: '0 13 * * *'  # 6:00 am PDT (UTC-7) = 13:00 UTC
+  workflow_dispatch:       # manual trigger from GitHub Actions UI
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install requests beautifulsoup4 lxml python-dotenv
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "Rickandtech1"
+          git config user.email "rickandtech1@users.noreply.github.com"
+
+      - name: Run daily scraper
+        env:
+          APIFY_TOKEN:       ${{ secrets.APIFY_TOKEN }}
+          RESEND_API_KEY:    ${{ secrets.RESEND_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          REPO_DIR:          ${{ github.workspace }}
+          # GITHUB_TOKEN is used by git_commit_push() when GITHUB_ACTIONS=true
+        run: python3 daily_update.py
