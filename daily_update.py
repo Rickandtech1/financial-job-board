@@ -1594,8 +1594,7 @@ def main():
     print(f"\n=== Daily Job Board Update — {TODAY} ===\n", flush=True)
 
     if not RESEND_API_KEY:
-        print("[ERROR] RESEND_API_KEY not set. Aborting.", flush=True)
-        sys.exit(1)
+        print("[WARN] RESEND_API_KEY not set. Email steps will be skipped (email-digest.yml handles it).", flush=True)
 
     # Step 0: Remove stale jobs (daysAgo > 45, not in pipeline)
     print("\n[STEP 0] Removing stale jobs ...", flush=True)
@@ -1684,15 +1683,18 @@ def main():
     else:
         print("\n[STEP 6] No changes — skipping commit", flush=True)
 
-    # Step 7: Email digest
-    print("\n[STEP 7] Sending email digest ...", flush=True)
-    total_jobs = count_jobs_in_html(JOB_BOARD_PATH)
-    subject, html_body = build_email_html(new_jobs, total_jobs)
-    send_email(subject, html_body)
+    # Step 7: Email digest (skipped if RESEND_API_KEY not set — email-digest.yml handles it)
+    if RESEND_API_KEY:
+        print("\n[STEP 7] Sending email digest ...", flush=True)
+        total_jobs = count_jobs_in_html(JOB_BOARD_PATH)
+        subject, html_body = build_email_html(new_jobs, total_jobs)
+        send_email(subject, html_body)
+    else:
+        print("\n[STEP 7] Skipping email digest (no RESEND_API_KEY; email-digest.yml will send after push).", flush=True)
 
     # Step 8: Generate and email tailored resume package (new non-dealbreaker jobs only)
     non_db_new = [j for j in new_jobs if not j.get("dealbreaker")]
-    if non_db_new and ANTHROPIC_KEY:
+    if non_db_new and ANTHROPIC_KEY and RESEND_API_KEY:
         print("\n[STEP 8] Generating tailored resume package ...", flush=True)
         doc_files = generate_resume_package(non_db_new)
         if doc_files:
@@ -1703,7 +1705,7 @@ def main():
     else:
         print("\n[STEP 8] Skipping resume package (no new non-dealbreaker jobs or no API key)", flush=True)
 
-    print(f"\n=== Done. {added} new roles added. Email sent. ===\n", flush=True)
+    print(f"\n=== Done. {added} new roles added. ===\n", flush=True)
 
 
 if __name__ == "__main__":
